@@ -24,7 +24,7 @@ type Dir string
 // This is the only function in this package that operates on any subdirectory
 // other than "cur".
 func (d Dir) Unseen() ([]string, error) {
-	f, err := os.Open(string(d) + "/new/")
+	f, err := os.Open(filepath.Join(string(d), "new"))
 	if err != nil {
 		return nil, err
 	}
@@ -40,7 +40,8 @@ func (d Dir) Unseen() ([]string, error) {
 				return r == ':'
 			})
 			keys = append(keys, split[0])
-			os.Rename(string(d) + "/new/" + n, string(d) + "/cur/" + n + ":2,S")
+			os.Rename(filepath.Join(string(d), "new", n),
+				filepath.Join(string(d), "cur", n + ":2,S"))
 		}
 	}
 	return keys, nil
@@ -48,7 +49,7 @@ func (d Dir) Unseen() ([]string, error) {
 
 // Keys returns a slice of valid keys to access messages by.
 func (d Dir) Keys() ([]string, error) {
-	f, err := os.Open(string(d) + "/cur/")
+	f, err := os.Open(filepath.Join(string(d), "cur/"))
 	if err != nil {
 		return nil, err
 	}
@@ -70,7 +71,7 @@ func (d Dir) Keys() ([]string, error) {
 }
 
 func (d Dir) filename(key string) (string, error) {
-	matches, err := filepath.Glob(string(d) + "/cur/" + key + "*")
+	matches, err := filepath.Glob(filepath.Join(string(d), "cur", key + "*"))
 	if err != nil {
 		return "", err
 	}
@@ -140,7 +141,10 @@ func (d Dir) Message(key string) (*mail.Message, error) {
 }
 
 func main() {
-	d := Dir("~/mdtest")
-	ks, _ := d.Unseen()
+	home := os.Getenv("HOME")
+	d := Dir(filepath.Join(home, "mdtest"))
+	d.Unseen()
+	ks, err := d.Keys()
+	fmt.Println(err)
 	fmt.Println(ks)
 }
