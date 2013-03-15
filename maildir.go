@@ -70,7 +70,8 @@ func (d Dir) Keys() ([]string, error) {
 	return keys, nil
 }
 
-func (d Dir) filename(key string) (string, error) {
+// Filename returns the path to the file corresponding to the key.
+func (d Dir) Filename(key string) (string, error) {
 	matches, err := filepath.Glob(filepath.Join(string(d), "cur", key + "*"))
 	if err != nil {
 		return "", err
@@ -83,7 +84,7 @@ func (d Dir) filename(key string) (string, error) {
 
 // Header returns the corresponding mail header to a key.
 func (d Dir) Header(key string) (header mail.Header, err error) {
-	filename, err := d.filename(key)
+	filename, err := d.Filename(key)
 	if err != nil {
 		return
 	}
@@ -103,7 +104,7 @@ func (d Dir) Header(key string) (header mail.Header, err error) {
 
 // Message returns a Message by key.
 func (d Dir) Message(key string) (*mail.Message, error) {
-	filename, err := d.filename(key)
+	filename, err := d.Filename(key)
 	if err != nil {
 		return &mail.Message{}, err
 	}
