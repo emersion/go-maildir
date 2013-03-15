@@ -101,23 +101,7 @@ func (d Dir) Header(key string) (header mail.Header, err error) {
 	return
 }
 
-// Headers returns headers for all mail in this Dir.
-func (d Dir) Headers() ([]mail.Header, error) {
-	ks, err := d.Keys()
-	if err != nil {
-		return nil, err
-	}
-	headers := make([]mail.Header, 0)
-	for _, k := range ks {
-		h, err := d.Header(k)
-		if err != nil {
-			return headers, err
-		}
-		headers = append(headers, h)
-	}
-	return headers, nil
-}
-
+// Message returns a Message by key.
 func (d Dir) Message(key string) (*mail.Message, error) {
 	filename, err := d.filename(key)
 	if err != nil {
