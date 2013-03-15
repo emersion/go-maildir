@@ -13,6 +13,11 @@ import (
 	"strings"
 )
 
+// The Separator separates a messages unique key from its flags in the filename.
+// This should only be changed on operating systems where the colon isn't
+// allowed in filenames.
+var Separator rune = ':'
+
 // A KeyError occurs when a key matches more or less than one message.
 type KeyError struct {
 	Key string // the (invalid) key
@@ -43,11 +48,11 @@ func (d Dir) Unseen() ([]string, error) {
 	for _, n := range names {
 		if n[0] != '.' {
 			split := strings.FieldsFunc(n, func(r rune) bool {
-				return r == ':'
+				return r == Separator
 			})
 			keys = append(keys, split[0])
 			os.Rename(filepath.Join(string(d), "new", n),
-				filepath.Join(string(d), "cur", n+":2,S"))
+				filepath.Join(string(d), "cur", n+string(Separator)+"2,S"))
 		}
 	}
 	return keys, nil
