@@ -4,17 +4,24 @@ package maildir
 import (
 	"bufio"
 	"bytes"
-	"errors"
-	"fmt"
 	"io"
 	"net/mail"
 	"net/textproto"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 )
 
-var KeyError = errors.New("Key maps to multiple or no Messages")
+// A KeyError occurs when a key matches more or less than one message.
+type KeyError struct {
+	Key string // the (invalid) key
+	N   int    // number of matches (!= 1)
+}
+
+func (e *KeyError) Error() string {
+	return "maildir: key " + e.Key + " matches " + strconv.Itoa(e.N) + " files."
+}
 
 // A Dir represents a single directory in a Maildir mailbox.
 type Dir string
@@ -75,8 +82,8 @@ func (d Dir) Filename(key string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if matches == nil || len(matches) > 1 {
-		return "", KeyError
+	if n := len(matches); n != 1 {
+		return "", &KeyError{key, n}
 	}
 	return matches[0], nil
 }
