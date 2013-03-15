@@ -1,5 +1,5 @@
 // The maildir package provides an interface to mailboxes in the Maildir format.
-package main //ldir
+package maildir
 
 import (
 	"bufio"
@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	//"io/ioutil"
 	"net/mail"
 	"net/textproto"
 	"os"
@@ -41,7 +40,7 @@ func (d Dir) Unseen() ([]string, error) {
 			})
 			keys = append(keys, split[0])
 			os.Rename(filepath.Join(string(d), "new", n),
-				filepath.Join(string(d), "cur", n + ":2,S"))
+				filepath.Join(string(d), "cur", n+":2,S"))
 		}
 	}
 	return keys, nil
@@ -72,7 +71,7 @@ func (d Dir) Keys() ([]string, error) {
 
 // Filename returns the path to the file corresponding to the key.
 func (d Dir) Filename(key string) (string, error) {
-	matches, err := filepath.Glob(filepath.Join(string(d), "cur", key + "*"))
+	matches, err := filepath.Glob(filepath.Join(string(d), "cur", key+"*"))
 	if err != nil {
 		return "", err
 	}
@@ -123,13 +122,4 @@ func (d Dir) Message(key string) (*mail.Message, error) {
 		return msg, err
 	}
 	return msg, nil
-}
-
-func main() {
-	home := os.Getenv("HOME")
-	d := Dir(filepath.Join(home, "mdtest"))
-	d.Unseen()
-	ks, err := d.Keys()
-	fmt.Println(err)
-	fmt.Println(ks)
 }
