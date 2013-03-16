@@ -11,6 +11,7 @@ import (
 	"net/textproto"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -32,6 +33,19 @@ type KeyError struct {
 
 func (e *KeyError) Error() string {
 	return "maildir: key " + e.Key + " matches " + strconv.Itoa(e.N) + " files."
+}
+
+// A FlagError occurs when a non-standard info section is encountered.
+type FlagError struct {
+	Info         string // the encountered info section
+	Experimental bool   // info section starts with 1
+}
+
+func (e *FlagError) Error() string {
+	if e.Experimental {
+		return "maildir: experimental info section encountered: " + e.Info[2:]
+	}
+	return "maildir: bad info section encountered: " + e.Info
 }
 
 // A Dir represents a single directory in a Maildir mailbox.
@@ -140,6 +154,35 @@ func (d Dir) Message(key string) (*mail.Message, error) {
 		return msg, err
 	}
 	return msg, nil
+}
+
+type runeSlice []rune
+
+func (s runeSlice) Len() int           { return len(s) }
+func (s runeSlice) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
+func (s runeSlice) Less(i, j int) bool { return s[i] < s[j] }
+
+// Flags returns the flags for a message sorted in ascending order.
+func (d Dir) Flags(key string) ([]rune, error) {
+	filename, err := d.Filename(key)
+	if err != nil {
+		return nil, err
+	}
+	split := strings.FieldsFunc(filename, func(r rune) bool {
+		return r == ':'
+	})
+	switch {
+	case len(split[1]) < 2,
+		split[1][1] != ',':
+		return nil, &FlagError{split[1], false}
+	case split[1][0] == '1':
+		return nil, &FlagError{split[1], true}
+	case split[1][0] != '2':
+		return nil, &FlagError{split[1], false}
+	}
+	rs := runeSlice(split[1][2:])
+	sort.Sort(rs)
+	return []rune(rs), nil
 }
 
 // Key generates a new unique key as described in the Maildir specification.
