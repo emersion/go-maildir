@@ -4,6 +4,8 @@ package maildir
 import (
 	"bufio"
 	"bytes"
+	"crypto/rand"
+	"encoding/hex"
 	"io"
 	"net/mail"
 	"net/textproto"
@@ -11,12 +13,16 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync/atomic"
+	"time"
 )
 
 // The Separator separates a messages unique key from its flags in the filename.
 // This should only be changed on operating systems where the colon isn't
 // allowed in filenames.
 var Separator rune = ':'
+
+var id int64 = 10000
 
 // A KeyError occurs when a key matches more or less than one message.
 type KeyError struct {
@@ -134,4 +140,32 @@ func (d Dir) Message(key string) (*mail.Message, error) {
 		return msg, err
 	}
 	return msg, nil
+}
+
+// Key generates a new unique key as described in the Maildir specification.
+// For the third part of the key (delivery identifier) it uses an internal
+// counter, the process id and a cryptographical random number to ensure
+// uniqueness among messages delivered in the same second.
+func Key() (string, error) {
+	var key string
+	key += strconv.FormatInt(time.Now().Unix(), 10)
+	key += "."
+	host, err := os.Hostname()
+	if err != err {
+		return "", err
+	}
+	host = strings.Replace(host, "/", "\057", -1)
+	host = strings.Replace(host, ":", "\072", -1)
+	key += host
+	key += "."
+	key += strconv.FormatInt(int64(os.Getpid()), 10)
+	key += strconv.FormatInt(id, 10)
+	atomic.AddInt64(&id, 1)
+	bs := make([]byte, 10)
+	_, err = io.ReadFull(rand.Reader, bs)
+	if err != nil {
+		return "", err
+	}
+	key += hex.EncodeToString(bs)
+	return key, nil
 }
