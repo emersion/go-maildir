@@ -71,11 +71,11 @@ func (d Dir) Unseen() ([]string, error) {
 				return r == Separator
 			})
 			keys = append(keys, split[0])
-			os.Rename(filepath.Join(string(d), "new", n),
+			err = os.Rename(filepath.Join(string(d), "new", n),
 				filepath.Join(string(d), "cur", n+string(Separator)+"2,S"))
 		}
 	}
-	return keys, nil
+	return keys, err
 }
 
 // Keys returns a slice of valid keys to access messages by.
