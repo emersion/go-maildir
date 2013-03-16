@@ -185,6 +185,18 @@ func (d Dir) Flags(key string) ([]rune, error) {
 	return []rune(rs), nil
 }
 
+// Set the info part of the filename.
+// Only use this if you plan on using a non-standard info part.
+func (d Dir) SetInfo(key, info string) error {
+	filename, err := d.Filename(key)
+	if err != nil {
+		return err
+	}
+	err = os.Rename(filename, filepath.Join(string(d), "cur", key+
+		string(Separator)+info))
+	return err
+}
+
 // Key generates a new unique key as described in the Maildir specification.
 // For the third part of the key (delivery identifier) it uses an internal
 // counter, the process id and a cryptographical random number to ensure
