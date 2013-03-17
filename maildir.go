@@ -185,6 +185,21 @@ func (d Dir) Flags(key string) ([]rune, error) {
 	return []rune(rs), nil
 }
 
+// SetFlags appends an info section to the filename according to the given flags.
+// This function removes duplicates and sorts the flags, but doesn't check
+// wether they conform with the Maildir specification.
+func (d Dir) SetFlags(key string, flags []rune) error {
+	info := "2,"
+	rs := runeSlice(flags)
+	sort.Sort(rs)
+	for _, r := range rs {
+		if []rune(info)[len(info)-1] != r {
+			info += string(r)
+		}
+	}
+	return d.SetInfo(key, info)
+}
+
 // Set the info part of the filename.
 // Only use this if you plan on using a non-standard info part.
 func (d Dir) SetInfo(key, info string) error {
