@@ -93,7 +93,7 @@ func (d Dir) Keys() ([]string, error) {
 	for _, n := range names {
 		if n[0] != '.' {
 			split := strings.FieldsFunc(n, func(r rune) bool {
-				return r == ':'
+				return r == Separator
 			})
 			keys = append(keys, split[0])
 		}
@@ -169,7 +169,7 @@ func (d Dir) Flags(key string) ([]rune, error) {
 		return nil, err
 	}
 	split := strings.FieldsFunc(filename, func(r rune) bool {
-		return r == ':'
+		return r == Separator
 	})
 	switch {
 	case len(split[1]) < 2,
@@ -210,7 +210,7 @@ func Key() (string, error) {
 		return "", err
 	}
 	host = strings.Replace(host, "/", "\057", -1)
-	host = strings.Replace(host, ":", "\072", -1)
+	host = strings.Replace(host, string(Separator), "\072", -1)
 	key += host
 	key += "."
 	key += strconv.FormatInt(int64(os.Getpid()), 10)
