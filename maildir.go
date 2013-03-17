@@ -80,7 +80,7 @@ func (d Dir) Unseen() ([]string, error) {
 
 // Keys returns a slice of valid keys to access messages by.
 func (d Dir) Keys() ([]string, error) {
-	f, err := os.Open(filepath.Join(string(d), "cur/"))
+	f, err := os.Open(filepath.Join(string(d), "cur"))
 	if err != nil {
 		return nil, err
 	}
