@@ -25,6 +25,9 @@ var Separator rune = ':'
 
 var id int64 = 10000
 
+// CreateMode is holds the permissions used when creating a directory.
+const CreateMode = 0700
+
 // A KeyError occurs when a key matches more or less than one message.
 type KeyError struct {
 	Key string // the (invalid) key
@@ -238,4 +241,27 @@ func Key() (string, error) {
 	}
 	key += hex.EncodeToString(bs)
 	return key, nil
+}
+
+// Create creates the directory structure for a Maildir.
+// If an error occurs while creating one of the subdirectories, this function
+// may leave a partially created directory structure.
+func (d Dir) Create() error {
+	err := os.Mkdir(string(d), os.ModeDir|CreateMode)
+	if err != nil {
+		return err
+	}
+	err = os.Mkdir(filepath.Join(string(d), "tmp"), os.ModeDir|CreateMode)
+	if err != nil {
+		return err
+	}
+	err = os.Mkdir(filepath.Join(string(d), "new"), os.ModeDir|CreateMode)
+	if err != nil {
+		return err
+	}
+	err = os.Mkdir(filepath.Join(string(d), "cur"), os.ModeDir|CreateMode)
+	if err != nil {
+		return err
+	}
+	return nil
 }
