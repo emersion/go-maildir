@@ -307,3 +307,14 @@ func (d *Delivery) Close() error {
 	}
 	return nil
 }
+
+// Move moves a message from this Maildir to another.
+func (d Dir) Move(target Dir, key string) error {
+	return os.Rename(filepath.Join(string(d), "cur", key),
+		filepath.Join(string(target), "cur", key))
+}
+
+// Purge removes the actual file behind this message.
+func (d Dir) Purge(key string) error {
+	return os.Remove(filepath.Join(string(d), "cur", key))
+}
