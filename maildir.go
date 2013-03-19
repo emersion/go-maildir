@@ -55,8 +55,6 @@ func (e *FlagError) Error() string {
 type Dir string
 
 // Unseen moves messages from new to cur (they are now "seen") and returns their keys.
-// This is the only function in this package that operates on any subdirectory
-// other than "cur".
 func (d Dir) Unseen() ([]string, error) {
 	f, err := os.Open(filepath.Join(string(d), "new"))
 	if err != nil {
@@ -260,6 +258,50 @@ func (d Dir) Create() error {
 		return err
 	}
 	err = os.Mkdir(filepath.Join(string(d), "cur"), os.ModeDir|CreateMode)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// Delivery represents an ongoing message delivery to the mailbox.
+// It implements the WriteCloser interface. On closing the underlying file is
+// moved/relinked to new.
+type Delivery struct {
+	file *os.File
+	d    Dir
+	key  string
+}
+
+// NewDelivery creates a new Delivery.
+func (d Dir) NewDelivery() (*Delivery, error) {
+	key, err := Key()
+	if err != nil {
+		return nil, err
+	}
+	file, err := os.Create(filepath.Join(string(d), "tmp", key))
+	if err != nil {
+		return nil, err
+	}
+	return &Delivery{file, d, key}, nil
+}
+
+func (d *Delivery) Write(p []byte) (int, error) {
+	return d.file.Write(p)
+}
+
+// Close closes the underlying file and moves it to new.
+func (d *Delivery) Close() error {
+	err := d.file.Close()
+	if err != nil {
+		return err
+	}
+	err = os.Link(filepath.Join(string(d.d), "tmp", d.key),
+		filepath.Join(string(d.d), "new", d.key))
+	if err != nil {
+		return err
+	}
+	err = os.Remove(filepath.Join(string(d.d), "tmp", d.key))
 	if err != nil {
 		return err
 	}
