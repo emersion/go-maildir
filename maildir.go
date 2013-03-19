@@ -318,3 +318,31 @@ func (d Dir) Move(target Dir, key string) error {
 func (d Dir) Purge(key string) error {
 	return os.Remove(filepath.Join(string(d), "cur", key))
 }
+
+// Clean removes old files from tmp and should be run periodically.
+// This does not use access time but modification time for portability reasons.
+func (d Dir) Clean() error {
+	f, err := os.Open(filepath.Join(string(d), "tmp"))
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	names, err := f.Readdirnames(0)
+	if err != nil {
+		return err
+	}
+	now := time.Now()
+	for _, n := range names {
+		fi, err := os.Stat(filepath.Join(string(d), "tmp", n))
+		if err != nil {
+			continue
+		}
+		if now.Sub(fi.ModTime()).Hours() > 36 {
+			err = os.Remove(filepath.Join(string(d), "tmp", n))
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
