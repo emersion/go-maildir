@@ -164,10 +164,10 @@ func (s runeSlice) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
 func (s runeSlice) Less(i, j int) bool { return s[i] < s[j] }
 
 // Flags returns the flags for a message sorted in ascending order.
-func (d Dir) Flags(key string) ([]rune, error) {
+func (d Dir) Flags(key string) (string, error) {
 	filename, err := d.Filename(key)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	split := strings.FieldsFunc(filename, func(r rune) bool {
 		return r == Separator
@@ -175,21 +175,21 @@ func (d Dir) Flags(key string) ([]rune, error) {
 	switch {
 	case len(split[1]) < 2,
 		split[1][1] != ',':
-		return nil, &FlagError{split[1], false}
+		return "", &FlagError{split[1], false}
 	case split[1][0] == '1':
-		return nil, &FlagError{split[1], true}
+		return "", &FlagError{split[1], true}
 	case split[1][0] != '2':
-		return nil, &FlagError{split[1], false}
+		return "", &FlagError{split[1], false}
 	}
 	rs := runeSlice(split[1][2:])
 	sort.Sort(rs)
-	return []rune(rs), nil
+	return string(rs), nil
 }
 
 // SetFlags appends an info section to the filename according to the given flags.
 // This function removes duplicates and sorts the flags, but doesn't check
 // wether they conform with the Maildir specification.
-func (d Dir) SetFlags(key string, flags []rune) error {
+func (d Dir) SetFlags(key string, flags string) error {
 	info := "2,"
 	rs := runeSlice(flags)
 	sort.Sort(rs)
