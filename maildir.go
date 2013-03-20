@@ -73,7 +73,7 @@ func (d Dir) Unseen() ([]string, error) {
 			})
 			keys = append(keys, split[0])
 			err = os.Rename(filepath.Join(string(d), "new", n),
-				filepath.Join(string(d), "cur", n+string(Separator)+"2,S"))
+				filepath.Join(string(d), "cur", n+string(Separator)+"2,"))
 		}
 	}
 	return keys, err
