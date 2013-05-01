@@ -279,11 +279,16 @@ func (d Dir) NewDelivery() (*Delivery, error) {
 	if err != nil {
 		return nil, err
 	}
+	del := &Delivery{}
+	time.AfterFunc(24*time.Hour, func() {del.Abort()})
 	file, err := os.Create(filepath.Join(string(d), "tmp", key))
 	if err != nil {
 		return nil, err
 	}
-	return &Delivery{file, d, key}, nil
+	del.file = file
+	del.d = d
+	del.key = key
+	return del, nil
 }
 
 func (d *Delivery) Write(p []byte) (int, error) {
@@ -298,6 +303,19 @@ func (d *Delivery) Close() error {
 	}
 	err = os.Link(filepath.Join(string(d.d), "tmp", d.key),
 		filepath.Join(string(d.d), "new", d.key))
+	if err != nil {
+		return err
+	}
+	err = os.Remove(filepath.Join(string(d.d), "tmp", d.key))
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// Abort closes the underlying file and removes it completely.
+func (d *Delivery) Abort() error {
+	err := d.file.Close()
 	if err != nil {
 		return err
 	}
