@@ -25,7 +25,7 @@ var Separator rune = ':'
 
 var id int64 = 10000
 
-// CreateMode is holds the permissions used when creating a directory.
+// CreateMode holds the permissions used when creating a directory.
 const CreateMode = 0700
 
 // A KeyError occurs when a key matches more or less than one message.
