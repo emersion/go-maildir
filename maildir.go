@@ -328,13 +328,20 @@ func (d *Delivery) Abort() error {
 
 // Move moves a message from this Maildir to another.
 func (d Dir) Move(target Dir, key string) error {
-	return os.Rename(filepath.Join(string(d), "cur", key),
-		filepath.Join(string(target), "cur", key))
+	path, err := d.Filename(key)
+	if err != nil {
+		return err
+	}
+	return os.Rename(path, filepath.Join(string(target), "cur", filepath.Base(path)))
 }
 
 // Purge removes the actual file behind this message.
 func (d Dir) Purge(key string) error {
-	return os.Remove(filepath.Join(string(d), "cur", key))
+	f, err := d.Filename(key)
+	if err != nil {
+		return err
+	}
+	return os.Remove(f)
 }
 
 // Clean removes old files from tmp and should be run periodically.
