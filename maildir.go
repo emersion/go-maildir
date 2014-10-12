@@ -71,9 +71,17 @@ func (d Dir) Unseen() ([]string, error) {
 			split := strings.FieldsFunc(n, func(r rune) bool {
 				return r == Separator
 			})
-			keys = append(keys, split[0])
+			key := split[0]
+			info := "2,"
+			// Messages in new shouldn't have an info section but
+			// we act as if, in case some other program didn't
+			// follow the spec.
+			if len(split) > 1 {
+				info = split[1]
+			}
+			keys = append(keys, key)
 			err = os.Rename(filepath.Join(string(d), "new", n),
-				filepath.Join(string(d), "cur", n+string(Separator)+"2,"))
+				filepath.Join(string(d), "cur", key+string(Separator)+info))
 		}
 	}
 	return keys, err
