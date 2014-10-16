@@ -172,6 +172,7 @@ func (s runeSlice) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
 func (s runeSlice) Less(i, j int) bool { return s[i] < s[j] }
 
 // Flags returns the flags for a message sorted in ascending order.
+// See the documentation of SetFlags for details.
 func (d Dir) Flags(key string) (string, error) {
 	filename, err := d.Filename(key)
 	if err != nil {
@@ -196,7 +197,17 @@ func (d Dir) Flags(key string) (string, error) {
 
 // SetFlags appends an info section to the filename according to the given flags.
 // This function removes duplicates and sorts the flags, but doesn't check
-// wether they conform with the Maildir specification.
+// whether they conform with the Maildir specification.
+//
+// The following flags are listed in the specification
+// (http://cr.yp.to/proto/maildir.html):
+//
+//	Flag "P" (passed): the user has resent/forwarded/bounced this message to someone else.
+//	Flag "R" (replied): the user has replied to this message.
+//	Flag "S" (seen): the user has viewed this message, though perhaps he didn't read all the way through it.
+//	Flag "T" (trashed): the user has moved this message to the trash; the trash will be emptied by a later user action.
+//	Flag "D" (draft): the user considers this message a draft; toggled at user discretion.
+//	Flag "F" (flagged): user-defined flag; toggled at user discretion.
 func (d Dir) SetFlags(key string, flags string) error {
 	info := "2,"
 	rs := runeSlice(flags)
