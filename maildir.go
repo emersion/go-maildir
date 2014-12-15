@@ -54,7 +54,9 @@ func (e *FlagError) Error() string {
 // A Dir represents a single directory in a Maildir mailbox.
 type Dir string
 
-// Unseen moves messages from new to cur (they are now "seen") and returns their keys.
+// Unseen moves messages from new to cur and returns their keys.
+// This means the messages are now known to the application. To find out whether
+// a user has seen a message, use Flags().
 func (d Dir) Unseen() ([]string, error) {
 	f, err := os.Open(filepath.Join(string(d), "new"))
 	if err != nil {
