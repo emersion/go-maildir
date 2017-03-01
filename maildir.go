@@ -268,21 +268,19 @@ func Key() (string, error) {
 // function may leave a partially created directory structure.
 func (d Dir) Create() error {
 	err := os.Mkdir(string(d), os.ModeDir|CreateMode)
-	if err != nil {
-		if !os.IsExist(err) {
-			return err
-		}
+	if err != nil && !os.IsExist(err) {
+		return err
 	}
 	err = os.Mkdir(filepath.Join(string(d), "tmp"), os.ModeDir|CreateMode)
-	if err != nil {
+	if err != nil && !os.IsExist(err) {
 		return err
 	}
 	err = os.Mkdir(filepath.Join(string(d), "new"), os.ModeDir|CreateMode)
-	if err != nil {
+	if err != nil && !os.IsExist(err) {
 		return err
 	}
 	err = os.Mkdir(filepath.Join(string(d), "cur"), os.ModeDir|CreateMode)
-	if err != nil {
+	if err != nil && !os.IsExist(err) {
 		return err
 	}
 	return nil
