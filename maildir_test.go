@@ -64,6 +64,39 @@ func TestCreate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	f, err := os.Open("test_create")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	fis, err := f.Readdir(0)
+	subdirs := make(map[string]os.FileInfo)
+	for _, fi := range fis {
+		if !fi.IsDir() {
+			t.Errorf("%s was not a directory", fi.Name())
+			continue
+		}
+		subdirs[fi.Name()] = fi
+	}
+
+	// Verify the directories have been created.
+	if _, ok := subdirs["tmp"]; !ok {
+		t.Error("'tmp' directory was not created")
+	}
+	if _, ok := subdirs["new"]; !ok {
+		t.Error("'new' directory was not created")
+	}
+	if _, ok := subdirs["cur"]; !ok {
+		t.Error("'cur' directory was not created")
+	}
+
+	// Make sure no error is returned if the directories already exist.
+	err = d.Create()
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	defer cleanup(t, d)
 }
 
