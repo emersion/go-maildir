@@ -89,6 +89,26 @@ func (d Dir) Unseen() ([]string, error) {
 	return keys, err
 }
 
+// UnseenCount returns the number of messages in new without looking at them.
+func (d Dir) UnseenCount() (int, error) {
+	f, err := os.Open(filepath.Join(string(d), "new"))
+	if err != nil {
+		return 0, err
+	}
+	defer f.Close()
+	names, err := f.Readdirnames(0)
+	if err != nil {
+		return 0, err
+	}
+	c := 0
+	for _, n := range names {
+		if n[0] != '.' {
+			c += 1
+		}
+	}
+	return c, nil
+}
+
 // Keys returns a slice of valid keys to access messages by.
 func (d Dir) Keys() ([]string, error) {
 	f, err := os.Open(filepath.Join(string(d), "cur"))
