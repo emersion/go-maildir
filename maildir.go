@@ -132,8 +132,8 @@ func (d Dir) Keys() ([]string, error) {
 	return keys, nil
 }
 
-// Filename returns the path to the file corresponding to the key.
-func (d Dir) Filename(key string) (string, error) {
+// filename returns the path to the file corresponding to the key.
+func (d Dir) filename(key string) (string, error) {
 	matches, err := filepath.Glob(filepath.Join(string(d), "cur", key+"*"))
 	if err != nil {
 		return "", err
@@ -146,7 +146,7 @@ func (d Dir) Filename(key string) (string, error) {
 
 // Header returns the corresponding mail header to a key.
 func (d Dir) Header(key string) (header mail.Header, err error) {
-	filename, err := d.Filename(key)
+	filename, err := d.filename(key)
 	if err != nil {
 		return
 	}
@@ -166,7 +166,7 @@ func (d Dir) Header(key string) (header mail.Header, err error) {
 
 // Message returns a Message by key.
 func (d Dir) Message(key string) (*mail.Message, error) {
-	filename, err := d.Filename(key)
+	filename, err := d.filename(key)
 	if err != nil {
 		return &mail.Message{}, err
 	}
@@ -196,7 +196,7 @@ func (s runeSlice) Less(i, j int) bool { return s[i] < s[j] }
 // Flags returns the flags for a message sorted in ascending order.
 // See the documentation of SetFlags for details.
 func (d Dir) Flags(key string) (string, error) {
-	filename, err := d.Filename(key)
+	filename, err := d.filename(key)
 	if err != nil {
 		return "", err
 	}
@@ -245,7 +245,7 @@ func (d Dir) SetFlags(key string, flags string) error {
 // Set the info part of the filename.
 // Only use this if you plan on using a non-standard info part.
 func (d Dir) SetInfo(key, info string) error {
-	filename, err := d.Filename(key)
+	filename, err := d.filename(key)
 	if err != nil {
 		return err
 	}
@@ -370,7 +370,7 @@ func (d *Delivery) Abort() error {
 
 // Move moves a message from this Maildir to another.
 func (d Dir) Move(target Dir, key string) error {
-	path, err := d.Filename(key)
+	path, err := d.filename(key)
 	if err != nil {
 		return err
 	}
@@ -379,7 +379,7 @@ func (d Dir) Move(target Dir, key string) error {
 
 // Purge removes the actual file behind this message.
 func (d Dir) Purge(key string) error {
-	f, err := d.Filename(key)
+	f, err := d.filename(key)
 	if err != nil {
 		return err
 	}
