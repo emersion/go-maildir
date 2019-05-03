@@ -150,7 +150,7 @@ func TestPurge(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = d.Purge(keys[0])
+	err = d.Remove(keys[0])
 	if err != nil {
 		t.Fatal(err)
 	}

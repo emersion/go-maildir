@@ -348,8 +348,8 @@ func (d Dir) Move(target Dir, key string) error {
 	return os.Rename(path, filepath.Join(string(target), "cur", filepath.Base(path)))
 }
 
-// Purge removes the actual file behind this message.
-func (d Dir) Purge(key string) error {
+// Remove removes the actual file behind this message.
+func (d Dir) Remove(key string) error {
 	f, err := d.filename(key)
 	if err != nil {
 		return err
