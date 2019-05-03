@@ -187,18 +187,37 @@ func (d Dir) Message(key string) (*mail.Message, error) {
 	return msg, nil
 }
 
-type runeSlice []rune
+type Flag rune
 
-func (s runeSlice) Len() int           { return len(s) }
-func (s runeSlice) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
-func (s runeSlice) Less(i, j int) bool { return s[i] < s[j] }
+const (
+	// The user has resent/forwarded/bounced this message to someone else.
+	FlagPassed Flag = 'P'
+	// The user has replied to this message.
+	FlagReplied Flag = 'R'
+	// The user has viewed this message, though perhaps he didn't read all the
+	// way through it.
+	FlagSeen Flag = 'S'
+	// The user has moved this message to the trash; the trash will be emptied
+	// by a later user action.
+	FlagTrashed Flag = 'T'
+	// The user considers this message a draft; toggled at user discretion.
+	FlagDraft Flag = 'D'
+	// User-defined flag; toggled at user discretion.
+	FlagFlagged Flag = 'F'
+)
+
+type flagList []Flag
+
+func (s flagList) Len() int           { return len(s) }
+func (s flagList) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
+func (s flagList) Less(i, j int) bool { return s[i] < s[j] }
 
 // Flags returns the flags for a message sorted in ascending order.
 // See the documentation of SetFlags for details.
-func (d Dir) Flags(key string) (string, error) {
+func (d Dir) Flags(key string) ([]Flag, error) {
 	filename, err := d.filename(key)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	split := strings.FieldsFunc(filename, func(r rune) bool {
 		return r == separator
@@ -206,37 +225,27 @@ func (d Dir) Flags(key string) (string, error) {
 	switch {
 	case len(split[1]) < 2,
 		split[1][1] != ',':
-		return "", &FlagError{split[1], false}
+		return nil, &FlagError{split[1], false}
 	case split[1][0] == '1':
-		return "", &FlagError{split[1], true}
+		return nil, &FlagError{split[1], true}
 	case split[1][0] != '2':
-		return "", &FlagError{split[1], false}
+		return nil, &FlagError{split[1], false}
 	}
-	rs := runeSlice(split[1][2:])
-	sort.Sort(rs)
-	return string(rs), nil
+	fl := flagList(split[1][2:])
+	sort.Sort(fl)
+	return []Flag(fl), nil
 }
 
 // SetFlags appends an info section to the filename according to the given flags.
 // This function removes duplicates and sorts the flags, but doesn't check
 // whether they conform with the Maildir specification.
-//
-// The following flags are listed in the specification
-// (http://cr.yp.to/proto/maildir.html):
-//
-//	Flag "P" (passed): the user has resent/forwarded/bounced this message to someone else.
-//	Flag "R" (replied): the user has replied to this message.
-//	Flag "S" (seen): the user has viewed this message, though perhaps he didn't read all the way through it.
-//	Flag "T" (trashed): the user has moved this message to the trash; the trash will be emptied by a later user action.
-//	Flag "D" (draft): the user considers this message a draft; toggled at user discretion.
-//	Flag "F" (flagged): user-defined flag; toggled at user discretion.
-func (d Dir) SetFlags(key string, flags string) error {
+func (d Dir) SetFlags(key string, flags []Flag) error {
 	info := "2,"
-	rs := runeSlice(flags)
-	sort.Sort(rs)
-	for _, r := range rs {
-		if []rune(info)[len(info)-1] != r {
-			info += string(r)
+	fl := flagList(flags)
+	sort.Sort(fl)
+	for _, f := range fl {
+		if []rune(info)[len(info)-1] != rune(f) {
+			info += string(f)
 		}
 	}
 	return d.SetInfo(key, info)
