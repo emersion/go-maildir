@@ -117,7 +117,7 @@ func TestDelivery(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	path, err := d.filename(keys[0])
+	path, err := d.Filename(keys[0])
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -146,7 +146,7 @@ func TestPurge(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	path, err := d.filename(keys[0])
+	path, err := d.Filename(keys[0])
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -191,7 +191,7 @@ func TestMove(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	path, err := d2.filename(keys[0])
+	path, err := d2.Filename(keys[0])
 	if err != nil {
 		t.Fatal(err)
 	}

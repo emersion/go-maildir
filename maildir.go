@@ -128,8 +128,8 @@ func (d Dir) Keys() ([]string, error) {
 	return keys, nil
 }
 
-// filename returns the path to the file corresponding to the key.
-func (d Dir) filename(key string) (string, error) {
+// Filename returns the path to the file corresponding to the key.
+func (d Dir) Filename(key string) (string, error) {
 	matches, err := filepath.Glob(filepath.Join(string(d), "cur", key+"*"))
 	if err != nil {
 		return "", err
@@ -142,7 +142,7 @@ func (d Dir) filename(key string) (string, error) {
 
 // Open reads a message by key.
 func (d Dir) Open(key string) (io.ReadCloser, error) {
-	filename, err := d.filename(key)
+	filename, err := d.Filename(key)
 	if err != nil {
 		return nil, err
 	}
@@ -177,7 +177,7 @@ func (s flagList) Less(i, j int) bool { return s[i] < s[j] }
 // Flags returns the flags for a message sorted in ascending order.
 // See the documentation of SetFlags for details.
 func (d Dir) Flags(key string) ([]Flag, error) {
-	filename, err := d.filename(key)
+	filename, err := d.Filename(key)
 	if err != nil {
 		return nil, err
 	}
@@ -216,7 +216,7 @@ func (d Dir) SetFlags(key string, flags []Flag) error {
 // Set the info part of the filename.
 // Only use this if you plan on using a non-standard info part.
 func (d Dir) SetInfo(key, info string) error {
-	filename, err := d.filename(key)
+	filename, err := d.Filename(key)
 	if err != nil {
 		return err
 	}
@@ -341,7 +341,7 @@ func (d *Delivery) Abort() error {
 
 // Move moves a message from this Maildir to another.
 func (d Dir) Move(target Dir, key string) error {
-	path, err := d.filename(key)
+	path, err := d.Filename(key)
 	if err != nil {
 		return err
 	}
@@ -350,7 +350,7 @@ func (d Dir) Move(target Dir, key string) error {
 
 // Remove removes the actual file behind this message.
 func (d Dir) Remove(key string) error {
-	f, err := d.filename(key)
+	f, err := d.Filename(key)
 	if err != nil {
 		return err
 	}
