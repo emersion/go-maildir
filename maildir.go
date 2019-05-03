@@ -25,8 +25,8 @@ var separator rune = ':'
 
 var id int64 = 10000
 
-// CreateMode holds the permissions used when creating a directory.
-const CreateMode = 0700
+// createMode holds the permissions used when creating a directory.
+const createMode = 0700
 
 // A KeyError occurs when a key matches more or less than one message.
 type KeyError struct {
@@ -296,19 +296,19 @@ func newKey() (string, error) {
 // in there. If an error occurs while creating one of the subdirectories, this
 // function may leave a partially created directory structure.
 func (d Dir) Create() error {
-	err := os.Mkdir(string(d), os.ModeDir|CreateMode)
+	err := os.Mkdir(string(d), os.ModeDir|createMode)
 	if err != nil && !os.IsExist(err) {
 		return err
 	}
-	err = os.Mkdir(filepath.Join(string(d), "tmp"), os.ModeDir|CreateMode)
+	err = os.Mkdir(filepath.Join(string(d), "tmp"), os.ModeDir|createMode)
 	if err != nil && !os.IsExist(err) {
 		return err
 	}
-	err = os.Mkdir(filepath.Join(string(d), "new"), os.ModeDir|CreateMode)
+	err = os.Mkdir(filepath.Join(string(d), "new"), os.ModeDir|createMode)
 	if err != nil && !os.IsExist(err) {
 		return err
 	}
-	err = os.Mkdir(filepath.Join(string(d), "cur"), os.ModeDir|CreateMode)
+	err = os.Mkdir(filepath.Join(string(d), "cur"), os.ModeDir|createMode)
 	if err != nil && !os.IsExist(err) {
 		return err
 	}
