@@ -2,13 +2,9 @@
 package maildir
 
 import (
-	"bufio"
-	"bytes"
 	"crypto/rand"
 	"encoding/hex"
 	"io"
-	"net/mail"
-	"net/textproto"
 	"os"
 	"path/filepath"
 	"sort"
@@ -144,47 +140,13 @@ func (d Dir) filename(key string) (string, error) {
 	return matches[0], nil
 }
 
-// Header returns the corresponding mail header to a key.
-func (d Dir) Header(key string) (header mail.Header, err error) {
-	filename, err := d.filename(key)
-	if err != nil {
-		return
-	}
-	file, err := os.Open(filename)
-	if err != nil {
-		return
-	}
-	defer file.Close()
-	tp := textproto.NewReader(bufio.NewReader(file))
-	hdr, err := tp.ReadMIMEHeader()
-	if err != nil {
-		return
-	}
-	header = mail.Header(hdr)
-	return
-}
-
 // Message returns a Message by key.
-func (d Dir) Message(key string) (*mail.Message, error) {
+func (d Dir) Open(key string) (io.ReadCloser, error) {
 	filename, err := d.filename(key)
 	if err != nil {
-		return &mail.Message{}, err
+		return nil, err
 	}
-	r, err := os.Open(filename)
-	if err != nil {
-		return &mail.Message{}, err
-	}
-	defer r.Close()
-	buf := new(bytes.Buffer)
-	_, err = io.Copy(buf, r)
-	if err != nil {
-		return &mail.Message{}, err
-	}
-	msg, err := mail.ReadMessage(buf)
-	if err != nil {
-		return msg, err
-	}
-	return msg, nil
+	return os.Open(filename)
 }
 
 type Flag rune
