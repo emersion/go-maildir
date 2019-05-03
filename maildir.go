@@ -18,10 +18,10 @@ import (
 	"time"
 )
 
-// The Separator separates a messages unique key from its flags in the filename.
+// The separator separates a messages unique key from its flags in the filename.
 // This should only be changed on operating systems where the colon isn't
 // allowed in filenames.
-var Separator rune = ':'
+var separator rune = ':'
 
 var id int64 = 10000
 
@@ -71,7 +71,7 @@ func (d Dir) Unseen() ([]string, error) {
 	for _, n := range names {
 		if n[0] != '.' {
 			split := strings.FieldsFunc(n, func(r rune) bool {
-				return r == Separator
+				return r == separator
 			})
 			key := split[0]
 			info := "2,"
@@ -83,7 +83,7 @@ func (d Dir) Unseen() ([]string, error) {
 			}
 			keys = append(keys, key)
 			err = os.Rename(filepath.Join(string(d), "new", n),
-				filepath.Join(string(d), "cur", key+string(Separator)+info))
+				filepath.Join(string(d), "cur", key+string(separator)+info))
 		}
 	}
 	return keys, err
@@ -124,7 +124,7 @@ func (d Dir) Keys() ([]string, error) {
 	for _, n := range names {
 		if n[0] != '.' {
 			split := strings.FieldsFunc(n, func(r rune) bool {
-				return r == Separator
+				return r == separator
 			})
 			keys = append(keys, split[0])
 		}
@@ -201,7 +201,7 @@ func (d Dir) Flags(key string) (string, error) {
 		return "", err
 	}
 	split := strings.FieldsFunc(filename, func(r rune) bool {
-		return r == Separator
+		return r == separator
 	})
 	switch {
 	case len(split[1]) < 2,
@@ -250,7 +250,7 @@ func (d Dir) SetInfo(key, info string) error {
 		return err
 	}
 	err = os.Rename(filename, filepath.Join(string(d), "cur", key+
-		string(Separator)+info))
+		string(separator)+info))
 	return err
 }
 
@@ -267,7 +267,7 @@ func Key() (string, error) {
 		return "", err
 	}
 	host = strings.Replace(host, "/", "\057", -1)
-	host = strings.Replace(host, string(Separator), "\072", -1)
+	host = strings.Replace(host, string(separator), "\072", -1)
 	key += host
 	key += "."
 	key += strconv.FormatInt(int64(os.Getpid()), 10)
