@@ -140,7 +140,7 @@ func (d Dir) filename(key string) (string, error) {
 	return matches[0], nil
 }
 
-// Message returns a Message by key.
+// Open reads a message by key.
 func (d Dir) Open(key string) (io.ReadCloser, error) {
 	filename, err := d.filename(key)
 	if err != nil {
