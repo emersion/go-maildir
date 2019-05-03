@@ -263,11 +263,11 @@ func (d Dir) SetInfo(key, info string) error {
 	return err
 }
 
-// Key generates a new unique key as described in the Maildir specification.
+// newKey generates a new unique key as described in the Maildir specification.
 // For the third part of the key (delivery identifier) it uses an internal
 // counter, the process id and a cryptographical random number to ensure
 // uniqueness among messages delivered in the same second.
-func Key() (string, error) {
+func newKey() (string, error) {
 	var key string
 	key += strconv.FormatInt(time.Now().Unix(), 10)
 	key += "."
@@ -326,7 +326,7 @@ type Delivery struct {
 
 // NewDelivery creates a new Delivery.
 func (d Dir) NewDelivery() (*Delivery, error) {
-	key, err := Key()
+	key, err := newKey()
 	if err != nil {
 		return nil, err
 	}
