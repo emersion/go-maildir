@@ -1,4 +1,9 @@
 // The maildir package provides an interface to mailboxes in the Maildir format.
+//
+// Maildir mailboxes are designed to be safe for concurrent delivery. This
+// means that at the same time, multiple processes can deliver to the same
+// mailbox. However only one process can receive and read messages stored in
+// the Maildir.
 package maildir
 
 import (
