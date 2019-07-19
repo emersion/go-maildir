@@ -133,8 +133,39 @@ func (d Dir) Keys() ([]string, error) {
 	return keys, nil
 }
 
+func (d Dir) filenameGuesses(key string) []string {
+	basename := filepath.Join(string(d), "cur", key+string(separator)+"2,")
+	return []string{
+		basename,
+
+		basename + string(FlagPassed),
+		basename + string(FlagReplied),
+		basename + string(FlagSeen),
+		basename + string(FlagDraft),
+		basename + string(FlagFlagged),
+
+		basename + string(FlagPassed),
+		basename + string(FlagPassed) + string(FlagSeen),
+		basename + string(FlagPassed) + string(FlagSeen) + string(FlagFlagged),
+		basename + string(FlagPassed) + string(FlagFlagged),
+
+		basename + string(FlagReplied) + string(FlagSeen),
+		basename + string(FlagReplied) + string(FlagSeen) + string(FlagFlagged),
+		basename + string(FlagReplied) + string(FlagFlagged),
+
+		basename + string(FlagSeen) + string(FlagFlagged),
+	}
+}
+
 // Filename returns the path to the file corresponding to the key.
 func (d Dir) Filename(key string) (string, error) {
+	// before doing an expensive Glob, see if we can guess the path based on some
+	// common flags
+	for _, guess := range d.filenameGuesses(key) {
+		if _, err := os.Stat(guess); err == nil {
+			return guess, nil
+		}
+	}
 	matches, err := filepath.Glob(filepath.Join(string(d), "cur", key+"*"))
 	if err != nil {
 		return "", err
