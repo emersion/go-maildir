@@ -1,16 +1,18 @@
 package maildir
 
 import (
+	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"os"
 	"testing"
 )
 
 // cleanup removes a Dir's directory structure
-func cleanup(t *testing.T, d Dir) {
+func cleanup(errorfn func(...interface{}), d Dir) {
 	err := os.RemoveAll(string(d))
 	if err != nil {
-		t.Error(err)
+		errorfn(err)
 	}
 }
 
@@ -41,18 +43,18 @@ func cat(t *testing.T, path string) string {
 }
 
 // makeDelivery creates a new message
-func makeDelivery(t *testing.T, d Dir, msg string) {
+func makeDelivery(fatalfn func(...interface{}), d Dir, msg string) {
 	del, err := d.NewDelivery()
 	if err != nil {
-		t.Fatal(err)
+		fatalfn(err)
 	}
 	_, err = del.Write([]byte(msg))
 	if err != nil {
-		t.Fatal(err)
+		fatalfn(err)
 	}
 	err = del.Close()
 	if err != nil {
-		t.Fatal(err)
+		fatalfn(err)
 	}
 }
 
@@ -97,7 +99,7 @@ func TestCreate(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	defer cleanup(t, d)
+	defer cleanup(t.Error, d)
 }
 
 func TestDelivery(t *testing.T) {
@@ -108,10 +110,10 @@ func TestDelivery(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer cleanup(t, d)
+	defer cleanup(t.Error, d)
 
 	var msg = "this is a message"
-	makeDelivery(t, d, msg)
+	makeDelivery(t.Fatal, d, msg)
 
 	keys, err := d.Unseen()
 	if err != nil {
@@ -138,9 +140,9 @@ func TestPurge(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer cleanup(t, d)
+	defer cleanup(t.Error, d)
 
-	makeDelivery(t, d, "foo")
+	makeDelivery(t.Fatal, d, "foo")
 
 	keys, err := d.Unseen()
 	if err != nil {
@@ -168,16 +170,16 @@ func TestMove(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer cleanup(t, d1)
+	defer cleanup(t.Error, d1)
 	var d2 Dir = "test_move2"
 	err = d2.Create()
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer cleanup(t, d2)
+	defer cleanup(t.Error, d2)
 
 	const msg = "a moving message"
-	makeDelivery(t, d1, msg)
+	makeDelivery(t.Fatal, d1, msg)
 	keys, err := d1.Unseen()
 	if err != nil {
 		t.Fatal(err)
@@ -199,4 +201,66 @@ func TestMove(t *testing.T) {
 		t.Fatal("Content doesn't match")
 	}
 
+}
+
+func BenchmarkFilename(b *testing.B) {
+	// set up test maildir
+	d := Dir("benchmark_filename")
+	if err := d.Create(); err != nil {
+		b.Fatalf("could not set up benchmark: %v", err)
+	}
+	defer cleanup(b.Error, d)
+
+	// make 5000 deliveries
+	for i := 0; i < 5000; i++ {
+		makeDelivery(b.Fatal, d, fmt.Sprintf("here is message number %d", i))
+	}
+
+	// grab keys
+	keys, err := d.Unseen()
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	// shuffle keys
+	rand.Shuffle(len(keys), func(i, j int) {
+		keys[i], keys[j] = keys[j], keys[i]
+	})
+
+	// set some flags
+	for i, key := range keys {
+		var err error
+		switch i % 5 {
+		case 0:
+			// no flags
+			fallthrough
+		case 1:
+			err = d.SetFlags(key, []Flag{FlagSeen})
+		case 2:
+			err = d.SetFlags(key, []Flag{FlagSeen, FlagReplied})
+		case 3:
+			err = d.SetFlags(key, []Flag{FlagReplied})
+		case 4:
+			err = d.SetFlags(key, []Flag{FlagFlagged})
+		}
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+
+	// run benchmark for the first N shuffled keys
+	keyIdx := 0
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		b.StartTimer()
+		_, err := d.Filename(keys[keyIdx])
+		b.StopTimer()
+		if err != nil {
+			b.Errorf("could not get filename for key %s", keys[keyIdx])
+		}
+		keyIdx++
+		if keyIdx >= len(keys) {
+			keyIdx = 0
+		}
+	}
 }
