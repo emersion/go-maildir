@@ -345,16 +345,16 @@ func (d *Delivery) Write(p []byte) (int, error) {
 
 // Close closes the underlying file and moves it to new.
 func (d *Delivery) Close() error {
+	tmppath := d.file.Name()
 	err := d.file.Close()
 	if err != nil {
 		return err
 	}
-	err = os.Link(filepath.Join(string(d.d), "tmp", d.key),
-		filepath.Join(string(d.d), "new", d.key))
+	err = os.Link(tmppath, filepath.Join(string(d.d), "new", d.key))
 	if err != nil {
 		return err
 	}
-	err = os.Remove(filepath.Join(string(d.d), "tmp", d.key))
+	err = os.Remove(tmppath)
 	if err != nil {
 		return err
 	}
@@ -363,11 +363,12 @@ func (d *Delivery) Close() error {
 
 // Abort closes the underlying file and removes it completely.
 func (d *Delivery) Abort() error {
+	tmppath := d.file.Name()
 	err := d.file.Close()
 	if err != nil {
 		return err
 	}
-	err = os.Remove(filepath.Join(string(d.d), "tmp", d.key))
+	err = os.Remove(tmppath)
 	if err != nil {
 		return err
 	}
