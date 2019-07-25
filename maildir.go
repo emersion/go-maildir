@@ -329,7 +329,6 @@ func (d Dir) NewDelivery() (*Delivery, error) {
 		return nil, err
 	}
 	del := &Delivery{}
-	time.AfterFunc(24*time.Hour, func() { del.Abort() })
 	file, err := os.Create(filepath.Join(string(d), "tmp", key))
 	if err != nil {
 		return nil, err
