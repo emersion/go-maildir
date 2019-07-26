@@ -203,6 +203,59 @@ func TestMove(t *testing.T) {
 
 }
 
+func TestCopy(t *testing.T) {
+	t.Parallel()
+	var d1 Dir = "test_copy1"
+	err := d1.Create()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cleanup(t.Error, d1)
+	var d2 Dir = "test_copy2"
+	err = d2.Create()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cleanup(t.Error, d2)
+	const msg = "a moving message"
+	makeDelivery(t.Fatal, d1, msg)
+	keys, err := d1.Unseen()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = d1.SetFlags(keys[0], []Flag{FlagSeen}); err != nil {
+		t.Fatal(err)
+	}
+	key2, err := d1.Copy(d2, keys[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	path, err := d1.Filename(keys[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cat(t, path) != msg {
+		t.Error("original content has changed")
+	}
+	path, err = d2.Filename(key2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cat(t, path) != msg {
+		t.Error("target content doesn't match source")
+	}
+	flags, err := d2.Flags(key2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(flags) != 1 {
+		t.Fatal("no flags on target")
+	}
+	if flags[0] != FlagSeen {
+		t.Error("seen flag not present on target")
+	}
+}
+
 func BenchmarkFilename(b *testing.B) {
 	// set up test maildir
 	d := Dir("benchmark_filename")

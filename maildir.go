@@ -384,6 +384,54 @@ func (d Dir) Move(target Dir, key string) error {
 	return os.Rename(path, filepath.Join(string(target), "cur", filepath.Base(path)))
 }
 
+// Copy copies the message with key from this Maildir to the target, preserving
+// its flags, returning the newly generated key for the target maildir or an
+// error.
+func (d Dir) Copy(target Dir, key string) (string, error) {
+	flags, err := d.Flags(key)
+	if err != nil {
+		return "", err
+	}
+	targetKey, err := d.copyToTmp(target, key)
+	if err != nil {
+		return "", err
+	}
+	tmpfile := filepath.Join(string(target), "tmp", targetKey)
+	curfile := filepath.Join(string(target), "cur", targetKey+"2,")
+	if err = os.Rename(tmpfile, curfile); err != nil {
+		return "", err
+	}
+	if err = target.SetFlags(targetKey, flags); err != nil {
+		return "", err
+	}
+	return targetKey, nil
+}
+
+// copyToTmp copies the message with key from d into a file in the target
+// maildir's tmp directory with a new key, returning the newly generated key or
+// an error.
+func (d Dir) copyToTmp(target Dir, key string) (string, error) {
+	rc, err := d.Open(key)
+	if err != nil {
+		return "", err
+	}
+	defer rc.Close()
+	targetKey, err := newKey()
+	if err != nil {
+		return "", err
+	}
+	tmpfile := filepath.Join(string(target), "tmp", targetKey)
+	wc, err := os.OpenFile(tmpfile, os.O_CREATE|os.O_WRONLY, 0600)
+	if err != nil {
+		return "", err
+	}
+	defer wc.Close()
+	if _, err = io.Copy(wc, rc); err != nil {
+		return "", err
+	}
+	return targetKey, nil
+}
+
 // Remove removes the actual file behind this message.
 func (d Dir) Remove(key string) error {
 	f, err := d.Filename(key)
