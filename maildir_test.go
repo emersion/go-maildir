@@ -256,6 +256,36 @@ func TestCopy(t *testing.T) {
 	}
 }
 
+func TestIllegal(t *testing.T) {
+	t.Parallel()
+	var d1 Dir = "test_illegal"
+	err := d1.Create()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cleanup(t.Error, d1)
+	const msg = "an illegal message"
+	makeDelivery(t.Fatal, d1, msg)
+	keys, err := d1.Unseen()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = d1.SetFlags(keys[0], []Flag{FlagSeen}); err != nil {
+		t.Fatal(err)
+	}
+	path, err := d1.Filename(keys[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	os.Rename(path, "test_illegal/cur/"+keys[0])
+	_, err = d1.Flags(keys[0])
+	if err != nil {
+		if _, ok := err.(*MailfileError); !ok {
+			t.Fatal(err)
+		}
+	}
+}
+
 func BenchmarkFilename(b *testing.B) {
 	// set up test maildir
 	d := Dir("benchmark_filename")
