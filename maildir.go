@@ -52,6 +52,15 @@ func (e *FlagError) Error() string {
 	return "maildir: bad info section encountered: " + e.Info
 }
 
+// A MailfileError occurs when a mailfile has an invalid format
+type MailfileError struct {
+	Name string // the name of the mailfile
+}
+
+func (e *MailfileError) Error() string {
+	return "maildir: invalid mailfile format: " + e.Name
+}
+
 // A Dir represents a single directory in a Maildir mailbox.
 type Dir string
 
@@ -221,6 +230,8 @@ func (d Dir) Flags(key string) ([]Flag, error) {
 		return r == separator
 	})
 	switch {
+	case len(split) == 1:
+		return nil, &MailfileError{filename}
 	case len(split[1]) < 2,
 		split[1][1] != ',':
 		return nil, &FlagError{split[1], false}
