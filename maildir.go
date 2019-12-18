@@ -230,7 +230,7 @@ func (d Dir) Flags(key string) ([]Flag, error) {
 		return r == separator
 	})
 	switch {
-	case len(split) == 1:
+	case len(split) <= 1:
 		return nil, &MailfileError{filename}
 	case len(split[1]) < 2,
 		split[1][1] != ',':
