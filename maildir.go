@@ -62,6 +62,10 @@ func (e *MailfileError) Error() string {
 }
 
 // A Dir represents a single directory in a Maildir mailbox.
+//
+// Dir is used by programs receiving and reading messages from a Maildir. Only
+// one process can perform these operations. Programs which only need to
+// deliver new messages to the Maildir should use Delivery.
 type Dir string
 
 // Unseen moves messages from new to cur and returns their keys.
@@ -324,68 +328,6 @@ func (d Dir) Create() error {
 	return nil
 }
 
-// Delivery represents an ongoing message delivery to the mailbox.
-// It implements the WriteCloser interface. On closing the underlying file is
-// moved/relinked to new.
-type Delivery struct {
-	file *os.File
-	d    Dir
-	key  string
-}
-
-// NewDelivery creates a new Delivery.
-func (d Dir) NewDelivery() (*Delivery, error) {
-	key, err := newKey()
-	if err != nil {
-		return nil, err
-	}
-	del := &Delivery{}
-	file, err := os.Create(filepath.Join(string(d), "tmp", key))
-	if err != nil {
-		return nil, err
-	}
-	del.file = file
-	del.d = d
-	del.key = key
-	return del, nil
-}
-
-func (d *Delivery) Write(p []byte) (int, error) {
-	return d.file.Write(p)
-}
-
-// Close closes the underlying file and moves it to new.
-func (d *Delivery) Close() error {
-	tmppath := d.file.Name()
-	err := d.file.Close()
-	if err != nil {
-		return err
-	}
-	err = os.Link(tmppath, filepath.Join(string(d.d), "new", d.key))
-	if err != nil {
-		return err
-	}
-	err = os.Remove(tmppath)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-// Abort closes the underlying file and removes it completely.
-func (d *Delivery) Abort() error {
-	tmppath := d.file.Name()
-	err := d.file.Close()
-	if err != nil {
-		return err
-	}
-	err = os.Remove(tmppath)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
 // Move moves a message from this Maildir to another.
 func (d Dir) Move(target Dir, key string) error {
 	path, err := d.Filename(key)
@@ -476,6 +418,71 @@ func (d Dir) Clean() error {
 				return err
 			}
 		}
+	}
+	return nil
+}
+
+// Delivery represents an ongoing message delivery to the mailbox. It
+// implements the io.WriteCloser interface. On Close the underlying file is
+// moved/relinked to new.
+//
+// Multiple processes can perform a delivery on the same Maildir concurrently.
+type Delivery struct {
+	file *os.File
+	d    Dir
+	key  string
+}
+
+// NewDelivery creates a new Delivery.
+func NewDelivery(d string) (*Delivery, error) {
+	key, err := newKey()
+	if err != nil {
+		return nil, err
+	}
+	del := &Delivery{}
+	file, err := os.Create(filepath.Join(d, "tmp", key))
+	if err != nil {
+		return nil, err
+	}
+	del.file = file
+	del.d = Dir(d)
+	del.key = key
+	return del, nil
+}
+
+// Write implements io.Writer.
+func (d *Delivery) Write(p []byte) (int, error) {
+	return d.file.Write(p)
+}
+
+// Close closes the underlying file and moves it to new.
+func (d *Delivery) Close() error {
+	tmppath := d.file.Name()
+	err := d.file.Close()
+	if err != nil {
+		return err
+	}
+	err = os.Link(tmppath, filepath.Join(string(d.d), "new", d.key))
+	if err != nil {
+		return err
+	}
+	err = os.Remove(tmppath)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// Abort closes the underlying file and removes it completely.
+func (d *Delivery) Abort() error {
+	tmppath := d.file.Name()
+	err := d.file.Close()
+	if err != nil {
+		return err
+	}
+	err = os.Remove(tmppath)
+	if err != nil {
+		return err
 	}
 	return nil
 }

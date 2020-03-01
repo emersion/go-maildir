@@ -44,7 +44,7 @@ func cat(t *testing.T, path string) string {
 
 // makeDelivery creates a new message
 func makeDelivery(fatalfn func(...interface{}), d Dir, msg string) {
-	del, err := d.NewDelivery()
+	del, err := NewDelivery(string(d))
 	if err != nil {
 		fatalfn(err)
 	}
