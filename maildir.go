@@ -304,11 +304,12 @@ func newKey() (string, error) {
 	return key, nil
 }
 
-// Create creates the directory structure for a Maildir.
+// Init creates the directory structure for a Maildir.
+//
 // If the main directory already exists, it tries to create the subdirectories
 // in there. If an error occurs while creating one of the subdirectories, this
 // function may leave a partially created directory structure.
-func (d Dir) Create() error {
+func (d Dir) Init() error {
 	err := os.Mkdir(string(d), os.ModeDir|createMode)
 	if err != nil && !os.IsExist(err) {
 		return err
