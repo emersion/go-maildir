@@ -58,11 +58,11 @@ func makeDelivery(tb testing.TB, d Dir, msg string) {
 	}
 }
 
-func TestCreate(t *testing.T) {
+func TestInit(t *testing.T) {
 	t.Parallel()
 
 	var d Dir = "test_create"
-	err := d.Create()
+	err := d.Init()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -94,7 +94,7 @@ func TestCreate(t *testing.T) {
 	}
 
 	// Make sure no error is returned if the directories already exist.
-	err = d.Create()
+	err = d.Init()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -106,7 +106,7 @@ func TestDelivery(t *testing.T) {
 	t.Parallel()
 
 	var d Dir = "test_delivery"
-	err := d.Create()
+	err := d.Init()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -136,7 +136,7 @@ func TestPurge(t *testing.T) {
 	t.Parallel()
 
 	var d Dir = "test_purge"
-	err := d.Create()
+	err := d.Init()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -166,13 +166,13 @@ func TestMove(t *testing.T) {
 	t.Parallel()
 
 	var d1 Dir = "test_move1"
-	err := d1.Create()
+	err := d1.Init()
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer cleanup(t, d1)
 	var d2 Dir = "test_move2"
-	err = d2.Create()
+	err = d2.Init()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -206,13 +206,13 @@ func TestMove(t *testing.T) {
 func TestCopy(t *testing.T) {
 	t.Parallel()
 	var d1 Dir = "test_copy1"
-	err := d1.Create()
+	err := d1.Init()
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer cleanup(t, d1)
 	var d2 Dir = "test_copy2"
-	err = d2.Create()
+	err = d2.Init()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -259,7 +259,7 @@ func TestCopy(t *testing.T) {
 func TestIllegal(t *testing.T) {
 	t.Parallel()
 	var d1 Dir = "test_illegal"
-	err := d1.Create()
+	err := d1.Init()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -289,7 +289,7 @@ func TestIllegal(t *testing.T) {
 func BenchmarkFilename(b *testing.B) {
 	// set up test maildir
 	d := Dir("benchmark_filename")
-	if err := d.Create(); err != nil {
+	if err := d.Init(); err != nil {
 		b.Fatalf("could not set up benchmark: %v", err)
 	}
 	defer cleanup(b, d)
