@@ -249,10 +249,7 @@ func (d Dir) Flags(key string) ([]Flag, error) {
 	return []Flag(fl), nil
 }
 
-// SetFlags appends an info section to the filename according to the given flags.
-// This function removes duplicates and sorts the flags, but doesn't check
-// whether they conform with the Maildir specification.
-func (d Dir) SetFlags(key string, flags []Flag) error {
+func formatInfo(flags []Flag) string {
 	info := "2,"
 	fl := flagList(flags)
 	sort.Sort(fl)
@@ -261,7 +258,14 @@ func (d Dir) SetFlags(key string, flags []Flag) error {
 			info += string(f)
 		}
 	}
-	return d.SetInfo(key, info)
+	return info
+}
+
+// SetFlags appends an info section to the filename according to the given flags.
+// This function removes duplicates and sorts the flags, but doesn't check
+// whether they conform with the Maildir specification.
+func (d Dir) SetFlags(key string, flags []Flag) error {
+	return d.SetInfo(key, formatInfo(flags))
 }
 
 // Set the info part of the filename.
@@ -384,6 +388,20 @@ func (d Dir) copyToTmp(target Dir, key string) (string, error) {
 		return "", err
 	}
 	return targetKey, nil
+}
+
+// Create inserts a new message into the Maildir.
+func (d Dir) Create(flags []Flag) (key string, w io.WriteCloser, err error) {
+	key, err = newKey()
+	if err != nil {
+		return "", nil, err
+	}
+	name := key + string(separator) + formatInfo(flags)
+	w, err = os.Create(filepath.Join(string(d), "cur", name))
+	if err != nil {
+		return "", nil, err
+	}
+	return key, w, err
 }
 
 // Remove removes the actual file behind this message.

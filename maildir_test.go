@@ -2,6 +2,7 @@ package maildir
 
 import (
 	"fmt"
+	"io"
 	"io/ioutil"
 	"math/rand"
 	"os"
@@ -120,6 +121,49 @@ func TestDelivery(t *testing.T) {
 		t.Fatal(err)
 	}
 	path, err := d.Filename(keys[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !exists(path) {
+		t.Fatal("File doesn't exist")
+	}
+
+	if cat(t, path) != msg {
+		t.Fatal("Content doesn't match")
+	}
+}
+
+func TestDir_Create(t *testing.T) {
+	t.Parallel()
+
+	var d Dir = "test_create"
+	err := d.Init()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cleanup(t, d)
+
+	var msg = "this is a message"
+	key, w, err := d.Create([]Flag{FlagFlagged})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer w.Close()
+	if _, err := io.WriteString(w, msg); err != nil {
+		t.Fatal(err)
+	}
+	if err := w.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	flags, err := d.Flags(key)
+	if err != nil {
+		t.Fatal(err)
+	} else if len(flags) != 1 || flags[0] != FlagFlagged {
+		t.Errorf("Dir.Flags() = %v, want {FlagFlagged}", flags)
+	}
+
+	path, err := d.Filename(key)
 	if err != nil {
 		t.Fatal(err)
 	}
