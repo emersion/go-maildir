@@ -9,10 +9,10 @@ import (
 )
 
 // cleanup removes a Dir's directory structure
-func cleanup(errorfn func(...interface{}), d Dir) {
+func cleanup(tb testing.TB, d Dir) {
 	err := os.RemoveAll(string(d))
 	if err != nil {
-		errorfn(err)
+		tb.Error(err)
 	}
 }
 
@@ -43,18 +43,18 @@ func cat(t *testing.T, path string) string {
 }
 
 // makeDelivery creates a new message
-func makeDelivery(fatalfn func(...interface{}), d Dir, msg string) {
+func makeDelivery(tb testing.TB, d Dir, msg string) {
 	del, err := NewDelivery(string(d))
 	if err != nil {
-		fatalfn(err)
+		tb.Fatal(err)
 	}
 	_, err = del.Write([]byte(msg))
 	if err != nil {
-		fatalfn(err)
+		tb.Fatal(err)
 	}
 	err = del.Close()
 	if err != nil {
-		fatalfn(err)
+		tb.Fatal(err)
 	}
 }
 
@@ -99,7 +99,7 @@ func TestCreate(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	defer cleanup(t.Error, d)
+	defer cleanup(t, d)
 }
 
 func TestDelivery(t *testing.T) {
@@ -110,10 +110,10 @@ func TestDelivery(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer cleanup(t.Error, d)
+	defer cleanup(t, d)
 
 	var msg = "this is a message"
-	makeDelivery(t.Fatal, d, msg)
+	makeDelivery(t, d, msg)
 
 	keys, err := d.Unseen()
 	if err != nil {
@@ -140,9 +140,9 @@ func TestPurge(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer cleanup(t.Error, d)
+	defer cleanup(t, d)
 
-	makeDelivery(t.Fatal, d, "foo")
+	makeDelivery(t, d, "foo")
 
 	keys, err := d.Unseen()
 	if err != nil {
@@ -170,16 +170,16 @@ func TestMove(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer cleanup(t.Error, d1)
+	defer cleanup(t, d1)
 	var d2 Dir = "test_move2"
 	err = d2.Create()
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer cleanup(t.Error, d2)
+	defer cleanup(t, d2)
 
 	const msg = "a moving message"
-	makeDelivery(t.Fatal, d1, msg)
+	makeDelivery(t, d1, msg)
 	keys, err := d1.Unseen()
 	if err != nil {
 		t.Fatal(err)
@@ -210,15 +210,15 @@ func TestCopy(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer cleanup(t.Error, d1)
+	defer cleanup(t, d1)
 	var d2 Dir = "test_copy2"
 	err = d2.Create()
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer cleanup(t.Error, d2)
+	defer cleanup(t, d2)
 	const msg = "a moving message"
-	makeDelivery(t.Fatal, d1, msg)
+	makeDelivery(t, d1, msg)
 	keys, err := d1.Unseen()
 	if err != nil {
 		t.Fatal(err)
@@ -263,9 +263,9 @@ func TestIllegal(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer cleanup(t.Error, d1)
+	defer cleanup(t, d1)
 	const msg = "an illegal message"
-	makeDelivery(t.Fatal, d1, msg)
+	makeDelivery(t, d1, msg)
 	keys, err := d1.Unseen()
 	if err != nil {
 		t.Fatal(err)
@@ -292,11 +292,11 @@ func BenchmarkFilename(b *testing.B) {
 	if err := d.Create(); err != nil {
 		b.Fatalf("could not set up benchmark: %v", err)
 	}
-	defer cleanup(b.Error, d)
+	defer cleanup(b, d)
 
 	// make 5000 deliveries
 	for i := 0; i < 5000; i++ {
-		makeDelivery(b.Fatal, d, fmt.Sprintf("here is message number %d", i))
+		makeDelivery(b, d, fmt.Sprintf("here is message number %d", i))
 	}
 
 	// grab keys
