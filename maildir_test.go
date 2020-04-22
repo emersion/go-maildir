@@ -62,13 +62,13 @@ func makeDelivery(tb testing.TB, d Dir, msg string) {
 func TestInit(t *testing.T) {
 	t.Parallel()
 
-	var d Dir = "test_create"
+	var d Dir = "test_init"
 	err := d.Init()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	f, err := os.Open("test_create")
+	f, err := os.Open("test_init")
 	if err != nil {
 		t.Fatal(err)
 	}
