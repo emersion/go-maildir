@@ -391,3 +391,47 @@ func BenchmarkFilename(b *testing.B) {
 		}
 	}
 }
+
+func TestrRemoveDir(t *testing.T) {
+	t.Parallel()
+
+	var d Dir = "test_rmdir"
+	err := d.Init()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = d.RemoveDir()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	f, err := os.Open("test_rmdir")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	fis, err := f.Readdir(0)
+	subdirs := make(map[string]os.FileInfo)
+	for _, fi := range fis {
+		if !fi.IsDir() {
+			t.Errorf("%s was not a directory", fi.Name())
+			continue
+		}
+		subdirs[fi.Name()] = fi
+	}
+
+	// Verify the directories have been created.
+	if _, ok := subdirs["tmp"]; !ok {
+		t.Error("'tmp' directory was not created")
+	}
+	if _, ok := subdirs["new"]; !ok {
+		t.Error("'new' directory was not created")
+	}
+	if _, ok := subdirs["cur"]; ok {
+		t.Error("'cur' directory was not deleted")
+	}
+
+	defer cleanup(t, d)
+
+}

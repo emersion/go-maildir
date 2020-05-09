@@ -413,6 +413,11 @@ func (d Dir) Remove(key string) error {
 	return os.Remove(f)
 }
 
+// RemoveDir removes the actual Maildir Dir
+func (d Dir) RemoveDir() error {
+	return os.RemoveAll(string(d) + "cur")
+}
+
 // Clean removes old files from tmp and should be run periodically.
 // This does not use access time but modification time for portability reasons.
 func (d Dir) Clean() error {
