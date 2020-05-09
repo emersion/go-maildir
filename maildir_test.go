@@ -392,7 +392,7 @@ func BenchmarkFilename(b *testing.B) {
 	}
 }
 
-func TestrRemoveDir(t *testing.T) {
+func TestRemoveDir(t *testing.T) {
 	t.Parallel()
 
 	var d Dir = "test_rmdir"
@@ -423,10 +423,10 @@ func TestrRemoveDir(t *testing.T) {
 
 	// Verify the directories have been created.
 	if _, ok := subdirs["tmp"]; !ok {
-		t.Error("'tmp' directory was not created")
+		t.Error("'tmp' directory does not exist")
 	}
 	if _, ok := subdirs["new"]; !ok {
-		t.Error("'new' directory was not created")
+		t.Error("'new' directory does not exist")
 	}
 	if _, ok := subdirs["cur"]; ok {
 		t.Error("'cur' directory was not deleted")

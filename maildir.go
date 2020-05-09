@@ -415,7 +415,25 @@ func (d Dir) Remove(key string) error {
 
 // RemoveDir removes the actual Maildir Dir
 func (d Dir) RemoveDir() error {
-	return os.RemoveAll(string(d) + "cur")
+	err := os.RemoveAll(filepath.Join(string(d), "tmp"))
+	if err != nil {
+		return err
+	}
+	os.RemoveAll(filepath.Join(string(d), "new"))
+	if err != nil {
+		return err
+	}
+
+	err = os.Mkdir(filepath.Join(string(d), "tmp"), os.ModeDir|createMode)
+	if err != nil && !os.IsExist(err) {
+		return err
+	}
+	err = os.Mkdir(filepath.Join(string(d), "new"), os.ModeDir|createMode)
+	if err != nil && !os.IsExist(err) {
+		return err
+	}
+
+	return os.RemoveAll(filepath.Join(string(d), "cur"))
 }
 
 // Clean removes old files from tmp and should be run periodically.
