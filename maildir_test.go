@@ -103,6 +103,32 @@ func TestInit(t *testing.T) {
 	defer cleanup(t, d)
 }
 
+func TestRemoveDir(t *testing.T) {
+	t.Parallel()
+
+	var d Dir = "test_remove_dir"
+	if err := d.Init(); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := os.Open("test_remove_dir"); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := d.RemoveDir(); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := os.Open("test_remove_dir"); err != nil {
+		// Expecting a "does not exist" error
+		if !os.IsNotExist(err) {
+			t.Fatal(err)
+		}
+	} else {
+		t.Fatal(fmt.Errorf("Directory was not removed upon RemoveDir()!"))
+	}
+}
+
 func TestDelivery(t *testing.T) {
 	t.Parallel()
 

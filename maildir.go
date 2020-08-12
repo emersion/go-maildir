@@ -413,6 +413,14 @@ func (d Dir) Remove(key string) error {
 	return os.Remove(f)
 }
 
+// RemoveDir removes the maildir, including any files within.
+//
+// This removes the maildir completely.
+// To re-create the maildir, use `Init`.
+func (d Dir) RemoveDir() error {
+	return os.RemoveAll(string(d))
+}
+
 // Clean removes old files from tmp and should be run periodically.
 // This does not use access time but modification time for portability reasons.
 func (d Dir) Clean() error {
