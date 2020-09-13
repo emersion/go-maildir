@@ -9,6 +9,7 @@ package maildir
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -123,6 +124,28 @@ func (d Dir) UnseenCount() (int, error) {
 	return c, nil
 }
 
+func parseKey(filename string) (string, error) {
+	split := strings.FieldsFunc(filename, func(r rune) bool {
+		return r == separator
+	})
+
+	if len(split) == 0 {
+		return "", fmt.Errorf("Cannot parse key from filename %s", filename)
+	}
+
+	return split[0], nil
+}
+
+// Key returns the key for the given file path.
+func (d Dir) Key(path string) (string, error) {
+	if filepath.Dir(path) != string(d) {
+		return "", fmt.Errorf("Filepath %s belongs to a different Maildir", path)
+	}
+
+	filename := filepath.Base(path)
+	return parseKey(filename)
+}
+
 // Keys returns a slice of valid keys to access messages by.
 func (d Dir) Keys() ([]string, error) {
 	f, err := os.Open(filepath.Join(string(d), "cur"))
@@ -137,10 +160,11 @@ func (d Dir) Keys() ([]string, error) {
 	var keys []string
 	for _, n := range names {
 		if n[0] != '.' {
-			split := strings.FieldsFunc(n, func(r rune) bool {
-				return r == separator
-			})
-			keys = append(keys, split[0])
+			key, err := parseKey(n)
+			if err != nil {
+				return nil, err
+			}
+			keys = append(keys, key)
 		}
 	}
 	return keys, nil
