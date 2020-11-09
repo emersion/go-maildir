@@ -37,7 +37,7 @@ type KeyError struct {
 }
 
 func (e *KeyError) Error() string {
-	return "maildir: key " + e.Key + " matches " + strconv.Itoa(e.N) + " files."
+	return fmt.Sprintf("maildir: key %v matches %v files, expected exactly one", e.Key, e.N)
 }
 
 // A FlagError occurs when a non-standard info section is encountered.
