@@ -379,7 +379,7 @@ func (d Dir) Copy(target Dir, key string) (string, error) {
 		return "", err
 	}
 	tmpfile := filepath.Join(string(target), "tmp", targetKey)
-	curfile := filepath.Join(string(target), "cur", targetKey+"2,")
+	curfile := filepath.Join(string(target), "cur", targetKey+string(separator)+"2,")
 	if err = os.Rename(tmpfile, curfile); err != nil {
 		return "", err
 	}
