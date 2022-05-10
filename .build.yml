@@ -1,0 +1,17 @@
+image: alpine/edge
+packages:
+  - go
+sources:
+  - https://github.com/emersion/go-maildir
+artifacts:
+  - coverage.html
+tasks:
+  - build: |
+      cd go-maildir
+      go build -v ./...
+  - test: |
+      cd go-maildir
+      go test -coverprofile=coverage.txt -covermode=atomic ./...
+  - coverage: |
+      cd go-maildir
+      go tool cover -html=coverage.txt -o ~/coverage.html
