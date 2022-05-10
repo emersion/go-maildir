@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"math/rand"
 	"os"
+	"path/filepath"
 	"testing"
 )
 
@@ -327,6 +328,38 @@ func TestIllegal(t *testing.T) {
 		if _, ok := err.(*MailfileError); !ok {
 			t.Fatal(err)
 		}
+	}
+}
+
+func TestFolderWithSquareBrackets(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	name := "[Google Mail].All Mail"
+
+	dir := Dir(filepath.Join(root, name))
+	if err := dir.Init(); err != nil {
+		t.Fatal(err)
+	}
+
+	key := func() string {
+		key, writer, err := dir.Create([]Flag{FlagPassed, FlagReplied})
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer writer.Close()
+		_, err = writer.Write([]byte("this is a message"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return key
+	}()
+
+	filename, err := dir.Filename(key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if filename == "" {
+		t.Error("filename should not be empty")
 	}
 }
 
