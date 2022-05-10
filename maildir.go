@@ -9,6 +9,7 @@ package maildir
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -24,6 +25,10 @@ import (
 // This should only be changed on operating systems where the colon isn't
 // allowed in filenames.
 var separator rune = ':'
+
+// readdirChunk represents the number of files to load at once from the mailbox
+// when searching for a message
+var readdirChunk = 100
 
 var id int64 = 10000
 
@@ -203,14 +208,32 @@ func (d Dir) Filename(key string) (string, error) {
 			return guess, nil
 		}
 	}
-	matches, err := filepath.Glob(filepath.Join(string(d), "cur", key+"*"))
+	file, err := os.Open(filepath.Join(string(d), "cur"))
 	if err != nil {
 		return "", err
 	}
-	if n := len(matches); n != 1 {
-		return "", &KeyError{key, n}
+	defer file.Close()
+
+	// search for a valid candidate (in blocks of readdirChunk)
+	for {
+		var names []string
+		names, err = file.Readdirnames(readdirChunk)
+
+		for _, name := range names {
+			if strings.HasPrefix(name, key) {
+				return name, nil
+			}
+		}
+		if err != nil {
+			break
+		}
 	}
-	return matches[0], nil
+	if err != nil && !errors.Is(err, io.EOF) {
+		return "", err
+	}
+	// no match
+	return "", &KeyError{key, 0}
+
 }
 
 // Open reads a message by key.
@@ -321,7 +344,7 @@ func newKey() (string, error) {
 	key += host
 	key += "."
 	key += strconv.FormatInt(int64(os.Getpid()), 10)
-	key += strconv.FormatInt(id, 10)
+	key += strconv.FormatInt(atomic.LoadInt64(&id), 10)
 	atomic.AddInt64(&id, 1)
 	bs := make([]byte, 10)
 	_, err = io.ReadFull(rand.Reader, bs)
