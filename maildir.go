@@ -203,10 +203,7 @@ func (d Dir) Filename(key string) (string, error) {
 			return guess, nil
 		}
 	}
-	pattern := filepath.Join(string(d), "cur", key+"*")
-	pattern = strings.ReplaceAll(pattern, "[", `\[`)
-	pattern = strings.ReplaceAll(pattern, "]", `\]`)
-	matches, err := filepath.Glob(pattern)
+	matches, err := filepath.Glob(filepath.Join(string(d), "cur", key+"*"))
 	if err != nil {
 		return "", err
 	}
