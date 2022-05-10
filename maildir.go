@@ -181,16 +181,16 @@ func (d Dir) filenameGuesses(key string) []string {
 		basename + string(FlagDraft),
 		basename + string(FlagFlagged),
 
+		basename + string(FlagFlagged) + string(FlagPassed),
+		basename + string(FlagFlagged) + string(FlagPassed) + string(FlagSeen),
+		basename + string(FlagFlagged) + string(FlagReplied),
+		basename + string(FlagFlagged) + string(FlagReplied) + string(FlagSeen),
+		basename + string(FlagFlagged) + string(FlagSeen),
+
 		basename + string(FlagPassed),
 		basename + string(FlagPassed) + string(FlagSeen),
-		basename + string(FlagPassed) + string(FlagSeen) + string(FlagFlagged),
-		basename + string(FlagPassed) + string(FlagFlagged),
 
 		basename + string(FlagReplied) + string(FlagSeen),
-		basename + string(FlagReplied) + string(FlagSeen) + string(FlagFlagged),
-		basename + string(FlagReplied) + string(FlagFlagged),
-
-		basename + string(FlagSeen) + string(FlagFlagged),
 	}
 }
 
