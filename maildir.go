@@ -546,9 +546,5 @@ func (d *Delivery) Abort() error {
 	if err != nil {
 		return err
 	}
-	err = os.Remove(tmppath)
-	if err != nil {
-		return err
-	}
-	return nil
+	return os.Remove(tmppath)
 }
