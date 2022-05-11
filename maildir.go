@@ -24,16 +24,13 @@ import (
 // The separator separates a messages unique key from its flags in the filename.
 // This should only be changed on operating systems where the colon isn't
 // allowed in filenames.
-var separator rune = ':'
+const separator rune = ':'
 
 // readdirChunk represents the number of files to load at once from the mailbox
 // when searching for a message
 var readdirChunk = 100
 
 var id int64 = 10000
-
-// createMode holds the permissions used when creating a directory.
-const createMode = 0700
 
 // A KeyError occurs when a key matches more or less than one message.
 type KeyError struct {
@@ -83,13 +80,21 @@ func (d Dir) Unseen() ([]string, error) {
 		return nil, err
 	}
 	defer f.Close()
-	names, err := f.Readdirnames(0)
-	if err != nil {
-		return nil, err
-	}
+
 	var keys []string
-	for _, n := range names {
-		if n[0] != '.' {
+	for {
+		names, err := f.Readdirnames(readdirChunk)
+		if errors.Is(err, io.EOF) {
+			break
+		} else if err != nil {
+			return keys, err
+		}
+
+		for _, n := range names {
+			if n[0] == '.' {
+				continue
+			}
+
 			split := strings.FieldsFunc(n, func(r rune) bool {
 				return r == separator
 			})
@@ -102,11 +107,16 @@ func (d Dir) Unseen() ([]string, error) {
 				info = split[1]
 			}
 			keys = append(keys, key)
-			err = os.Rename(filepath.Join(string(d), "new", n),
+
+			err := os.Rename(filepath.Join(string(d), "new", n),
 				filepath.Join(string(d), "cur", key+string(separator)+info))
+			if err != nil {
+				return keys, err
+			}
 		}
 	}
-	return keys, err
+
+	return keys, nil
 }
 
 // UnseenCount returns the number of messages in new without looking at them.
@@ -116,16 +126,23 @@ func (d Dir) UnseenCount() (int, error) {
 		return 0, err
 	}
 	defer f.Close()
-	names, err := f.Readdirnames(0)
-	if err != nil {
-		return 0, err
-	}
+
 	c := 0
-	for _, n := range names {
-		if n[0] != '.' {
-			c += 1
+	for {
+		names, err := f.Readdirnames(readdirChunk)
+		if errors.Is(err, io.EOF) {
+			break
+		} else if err != nil {
+			return 0, err
+		}
+
+		for _, n := range names {
+			if n[0] != '.' {
+				c++
+			}
 		}
 	}
+
 	return c, nil
 }
 
@@ -359,19 +376,19 @@ func newKey() (string, error) {
 // in there. If an error occurs while creating one of the subdirectories, this
 // function may leave a partially created directory structure.
 func (d Dir) Init() error {
-	err := os.Mkdir(string(d), os.ModeDir|createMode)
+	err := os.Mkdir(string(d), 0700)
 	if err != nil && !os.IsExist(err) {
 		return err
 	}
-	err = os.Mkdir(filepath.Join(string(d), "tmp"), os.ModeDir|createMode)
+	err = os.Mkdir(filepath.Join(string(d), "tmp"), 0700)
 	if err != nil && !os.IsExist(err) {
 		return err
 	}
-	err = os.Mkdir(filepath.Join(string(d), "new"), os.ModeDir|createMode)
+	err = os.Mkdir(filepath.Join(string(d), "new"), 0700)
 	if err != nil && !os.IsExist(err) {
 		return err
 	}
-	err = os.Mkdir(filepath.Join(string(d), "cur"), os.ModeDir|createMode)
+	err = os.Mkdir(filepath.Join(string(d), "cur"), 0700)
 	if err != nil && !os.IsExist(err) {
 		return err
 	}
@@ -424,7 +441,7 @@ func (d Dir) copyToTmp(target Dir, key string) (string, error) {
 		return "", err
 	}
 	tmpfile := filepath.Join(string(target), "tmp", targetKey)
-	wc, err := os.OpenFile(tmpfile, os.O_CREATE|os.O_WRONLY, 0600)
+	wc, err := os.OpenFile(tmpfile, os.O_CREATE|os.O_WRONLY|os.O_EXCL, 0666)
 	if err != nil {
 		return "", err
 	}
@@ -441,8 +458,9 @@ func (d Dir) Create(flags []Flag) (key string, w io.WriteCloser, err error) {
 	if err != nil {
 		return "", nil, err
 	}
-	name := key + string(separator) + formatInfo(flags)
-	w, err = os.Create(filepath.Join(string(d), "cur", name))
+	basename := key + string(separator) + formatInfo(flags)
+	filename := filepath.Join(string(d), "cur", basename)
+	w, err = os.OpenFile(filename, os.O_CREATE|os.O_WRONLY|os.O_EXCL, 0666)
 	if err != nil {
 		return "", nil, err
 	}
@@ -504,7 +522,8 @@ func NewDelivery(d string) (*Delivery, error) {
 		return nil, err
 	}
 	del := &Delivery{}
-	file, err := os.Create(filepath.Join(d, "tmp", key))
+	filename := filepath.Join(d, "tmp", key)
+	file, err := os.OpenFile(filename, os.O_CREATE|os.O_WRONLY|os.O_EXCL, 0666)
 	if err != nil {
 		return nil, err
 	}
@@ -544,9 +563,5 @@ func (d *Delivery) Abort() error {
 	if err != nil {
 		return err
 	}
-	err = os.Remove(tmppath)
-	if err != nil {
-		return err
-	}
-	return nil
+	return os.Remove(tmppath)
 }
