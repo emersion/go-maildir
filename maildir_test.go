@@ -363,6 +363,27 @@ func TestFolderWithSquareBrackets(t *testing.T) {
 	}
 }
 
+func TestGeneratedKeysAreUnique(t *testing.T) {
+	t.Parallel()
+	total := 5000
+	unique := make(map[string]bool, total)
+
+	for i := 0; i < total; i++ {
+		key, err := newKey()
+		if err != nil {
+			t.Fatalf("error generating key: %s", err)
+		}
+		if _, found := unique[key]; found {
+			t.Fatalf("non unique key generated: %q", key)
+		}
+		unique[key] = true
+	}
+
+	if len(unique) != total {
+		t.Fatalf("number of unique keys expected to be %d but found %d", total, len(unique))
+	}
+}
+
 func TestDifferentSizesOfReaddirChunks(t *testing.T) {
 	totalFiles := 3
 	// don't run this test in // as it modifies a package variable
