@@ -344,7 +344,7 @@ func newKey() (string, error) {
 	key += host
 	key += "."
 	key += strconv.FormatInt(int64(os.Getpid()), 10)
-	key += strconv.FormatInt(atomic.LoadInt64(&id), 10)
+	key += strconv.FormatInt(id, 10)
 	atomic.AddInt64(&id, 1)
 	bs := make([]byte, 10)
 	_, err = io.ReadFull(rand.Reader, bs)
