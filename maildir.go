@@ -216,24 +216,22 @@ func (d Dir) Filename(key string) (string, error) {
 
 	// search for a valid candidate (in blocks of readdirChunk)
 	for {
-		var names []string
-		names, err = file.Readdirnames(readdirChunk)
+		names, err := file.Readdirnames(readdirChunk)
+
+		// no match
+		if errors.Is(err, io.EOF) {
+			return "", &KeyError{key, 0}
+		}
+		if err != nil {
+			return "", err
+		}
 
 		for _, name := range names {
 			if strings.HasPrefix(name, key) {
 				return name, nil
 			}
 		}
-		if err != nil {
-			break
-		}
 	}
-	if err != nil && !errors.Is(err, io.EOF) {
-		return "", err
-	}
-	// no match
-	return "", &KeyError{key, 0}
-
 }
 
 // Open reads a message by key.

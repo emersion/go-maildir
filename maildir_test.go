@@ -392,6 +392,10 @@ func TestDifferentSizesOfReaddirChunks(t *testing.T) {
 	}
 
 	previousReaddirChunk := readdirChunk
+	// set it back to normal for the following tests
+	defer func() {
+		readdirChunk = previousReaddirChunk
+	}()
 
 	// try different sizes of chunks
 	for chunkSize := 0; chunkSize <= totalFiles+1; chunkSize++ {
@@ -406,8 +410,6 @@ func TestDifferentSizesOfReaddirChunks(t *testing.T) {
 			}
 		}
 	}
-	// set it back to normal for the following tests
-	readdirChunk = previousReaddirChunk
 }
 
 func BenchmarkFilename(b *testing.B) {
