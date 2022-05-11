@@ -80,13 +80,21 @@ func (d Dir) Unseen() ([]string, error) {
 		return nil, err
 	}
 	defer f.Close()
-	names, err := f.Readdirnames(0)
-	if err != nil {
-		return nil, err
-	}
+
 	var keys []string
-	for _, n := range names {
-		if n[0] != '.' {
+	for {
+		names, err := f.Readdirnames(readdirChunk)
+		if errors.Is(err, io.EOF) {
+			break
+		} else if err != nil {
+			return keys, err
+		}
+
+		for _, n := range names {
+			if n[0] == '.' {
+				continue
+			}
+
 			split := strings.FieldsFunc(n, func(r rune) bool {
 				return r == separator
 			})
@@ -99,11 +107,16 @@ func (d Dir) Unseen() ([]string, error) {
 				info = split[1]
 			}
 			keys = append(keys, key)
-			err = os.Rename(filepath.Join(string(d), "new", n),
+
+			err := os.Rename(filepath.Join(string(d), "new", n),
 				filepath.Join(string(d), "cur", key+string(separator)+info))
+			if err != nil {
+				return keys, err
+			}
 		}
 	}
-	return keys, err
+
+	return keys, nil
 }
 
 // UnseenCount returns the number of messages in new without looking at them.
