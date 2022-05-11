@@ -424,7 +424,7 @@ func (d Dir) copyToTmp(target Dir, key string) (string, error) {
 		return "", err
 	}
 	tmpfile := filepath.Join(string(target), "tmp", targetKey)
-	wc, err := os.OpenFile(tmpfile, os.O_CREATE|os.O_WRONLY, 0600)
+	wc, err := os.OpenFile(tmpfile, os.O_CREATE|os.O_WRONLY|os.O_EXCL, 0666)
 	if err != nil {
 		return "", err
 	}
@@ -441,8 +441,9 @@ func (d Dir) Create(flags []Flag) (key string, w io.WriteCloser, err error) {
 	if err != nil {
 		return "", nil, err
 	}
-	name := key + string(separator) + formatInfo(flags)
-	w, err = os.Create(filepath.Join(string(d), "cur", name))
+	basename := key + string(separator) + formatInfo(flags)
+	filename := filepath.Join(string(d), "cur", basename)
+	w, err = os.OpenFile(filename, os.O_CREATE|os.O_WRONLY|os.O_EXCL, 0666)
 	if err != nil {
 		return "", nil, err
 	}
@@ -504,7 +505,8 @@ func NewDelivery(d string) (*Delivery, error) {
 		return nil, err
 	}
 	del := &Delivery{}
-	file, err := os.Create(filepath.Join(d, "tmp", key))
+	filename := filepath.Join(d, "tmp", key)
+	file, err := os.OpenFile(filename, os.O_CREATE|os.O_WRONLY|os.O_EXCL, 0666)
 	if err != nil {
 		return nil, err
 	}
