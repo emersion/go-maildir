@@ -126,16 +126,23 @@ func (d Dir) UnseenCount() (int, error) {
 		return 0, err
 	}
 	defer f.Close()
-	names, err := f.Readdirnames(0)
-	if err != nil {
-		return 0, err
-	}
+
 	c := 0
-	for _, n := range names {
-		if n[0] != '.' {
-			c += 1
+	for {
+		names, err := f.Readdirnames(readdirChunk)
+		if errors.Is(err, io.EOF) {
+			break
+		} else if err != nil {
+			return 0, err
+		}
+
+		for _, n := range names {
+			if n[0] != '.' {
+				c++
+			}
 		}
 	}
+
 	return c, nil
 }
 
