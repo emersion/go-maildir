@@ -24,7 +24,7 @@ import (
 // The separator separates a messages unique key from its flags in the filename.
 // This should only be changed on operating systems where the colon isn't
 // allowed in filenames.
-var separator rune = ':'
+const separator rune = ':'
 
 // readdirChunk represents the number of files to load at once from the mailbox
 // when searching for a message
