@@ -32,9 +32,6 @@ var readdirChunk = 100
 
 var id int64 = 10000
 
-// createMode holds the permissions used when creating a directory.
-const createMode = 0700
-
 // A KeyError occurs when a key matches more or less than one message.
 type KeyError struct {
 	Key string // the (invalid) key
@@ -359,19 +356,19 @@ func newKey() (string, error) {
 // in there. If an error occurs while creating one of the subdirectories, this
 // function may leave a partially created directory structure.
 func (d Dir) Init() error {
-	err := os.Mkdir(string(d), os.ModeDir|createMode)
+	err := os.Mkdir(string(d), 0700)
 	if err != nil && !os.IsExist(err) {
 		return err
 	}
-	err = os.Mkdir(filepath.Join(string(d), "tmp"), os.ModeDir|createMode)
+	err = os.Mkdir(filepath.Join(string(d), "tmp"), 0700)
 	if err != nil && !os.IsExist(err) {
 		return err
 	}
-	err = os.Mkdir(filepath.Join(string(d), "new"), os.ModeDir|createMode)
+	err = os.Mkdir(filepath.Join(string(d), "new"), 0700)
 	if err != nil && !os.IsExist(err) {
 		return err
 	}
-	err = os.Mkdir(filepath.Join(string(d), "cur"), os.ModeDir|createMode)
+	err = os.Mkdir(filepath.Join(string(d), "cur"), 0700)
 	if err != nil && !os.IsExist(err) {
 		return err
 	}
