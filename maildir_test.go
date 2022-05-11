@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"math/rand"
 	"os"
+	"path/filepath"
 	"testing"
 )
 
@@ -326,6 +327,87 @@ func TestIllegal(t *testing.T) {
 	if err != nil {
 		if _, ok := err.(*MailfileError); !ok {
 			t.Fatal(err)
+		}
+	}
+}
+
+func TestFolderWithSquareBrackets(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	name := "[Google Mail].All Mail"
+
+	dir := Dir(filepath.Join(root, name))
+	if err := dir.Init(); err != nil {
+		t.Fatal(err)
+	}
+
+	key := func() string {
+		key, writer, err := dir.Create([]Flag{FlagPassed, FlagReplied})
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer writer.Close()
+		_, err = writer.Write([]byte("this is a message"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return key
+	}()
+
+	filename, err := dir.Filename(key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if filename == "" {
+		t.Error("filename should not be empty")
+	}
+}
+
+func TestDifferentSizesOfReaddirChunks(t *testing.T) {
+	totalFiles := 3
+	// don't run this test in // as it modifies a package variable
+	source := t.TempDir()
+
+	dir := Dir(source)
+	if err := dir.Init(); err != nil {
+		t.Fatal(err)
+	}
+
+	for i := 0; i < totalFiles; i++ {
+		makeDelivery(t, dir, fmt.Sprintf("here is message number %d", i))
+	}
+
+	// grab keys
+	keys, err := dir.Unseen()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// avoid the filename guesser
+	for _, key := range keys {
+		err := dir.SetFlags(key, []Flag{FlagPassed, FlagReplied})
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	previousReaddirChunk := readdirChunk
+	// set it back to normal for the following tests
+	defer func() {
+		readdirChunk = previousReaddirChunk
+	}()
+
+	// try different sizes of chunks
+	for chunkSize := 0; chunkSize <= totalFiles+1; chunkSize++ {
+		readdirChunk = chunkSize
+		for _, key := range keys {
+			filename, err := dir.Filename(key)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if filename == "" {
+				t.Errorf("cannot find filename for key %q", key)
+			}
 		}
 	}
 }
