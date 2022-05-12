@@ -351,7 +351,7 @@ func newKey() (string, error) {
 	key += strconv.FormatInt(time.Now().Unix(), 10)
 	key += "."
 	host, err := os.Hostname()
-	if err != err {
+	if err != nil {
 		return "", err
 	}
 	host = strings.Replace(host, "/", "\057", -1)
@@ -359,8 +359,8 @@ func newKey() (string, error) {
 	key += host
 	key += "."
 	key += strconv.FormatInt(int64(os.Getpid()), 10)
-	key += strconv.FormatInt(id, 10)
-	atomic.AddInt64(&id, 1)
+	key += strconv.FormatInt(atomic.AddInt64(&id, 1), 10)
+
 	bs := make([]byte, 10)
 	_, err = io.ReadFull(rand.Reader, bs)
 	if err != nil {

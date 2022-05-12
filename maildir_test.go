@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 )
 
@@ -361,6 +362,30 @@ func TestFolderWithSquareBrackets(t *testing.T) {
 	if filename == "" {
 		t.Error("filename should not be empty")
 	}
+}
+
+func TestGeneratedKeysAreUnique(t *testing.T) {
+	t.Parallel()
+	totalThreads := 10
+	unique := sync.Map{}
+
+	for thread := 0; thread < totalThreads; thread++ {
+		t.Run("", func(t *testing.T) {
+			t.Parallel()
+			total := 5000
+			for i := 0; i < total; i++ {
+				key, err := newKey()
+				if err != nil {
+					t.Fatalf("error generating key: %s", err)
+				}
+				if _, found := unique.Load(key); found {
+					t.Fatalf("non unique key generated: %q", key)
+				}
+				unique.Store(key, true)
+			}
+		})
+	}
+
 }
 
 func TestDifferentSizesOfReaddirChunks(t *testing.T) {
