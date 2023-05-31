@@ -279,15 +279,16 @@ const (
 	FlagFlagged Flag = 'F'
 )
 
-type flagList []Flag
+type FlagList []Flag
 
-func (s flagList) Len() int           { return len(s) }
-func (s flagList) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
-func (s flagList) Less(i, j int) bool { return s[i] < s[j] }
+func (s FlagList) Len() int           { return len(s) }
+func (s FlagList) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
+func (s FlagList) Less(i, j int) bool { return s[i] < s[j] }
+func (s FlagList) String() string     { return string(s) }
 
 // Flags returns the flags for a message sorted in ascending order.
 // See the documentation of SetFlags for details.
-func (d Dir) Flags(key string) ([]Flag, error) {
+func (d Dir) Flags(key string) (FlagList, error) {
 	filename, err := d.Filename(key)
 	if err != nil {
 		return nil, err
@@ -298,22 +299,21 @@ func (d Dir) Flags(key string) ([]Flag, error) {
 	switch {
 	case len(split) <= 1:
 		return nil, &MailfileError{filename}
-	case len(split[1]) < 2,
-		split[1][1] != ',':
+	case len(split[1]) < 2, split[1][1] != ',':
 		return nil, &FlagError{split[1], false}
 	case split[1][0] == '1':
 		return nil, &FlagError{split[1], true}
 	case split[1][0] != '2':
 		return nil, &FlagError{split[1], false}
 	}
-	fl := flagList(split[1][2:])
+	fl := FlagList(split[1][2:])
 	sort.Sort(fl)
 	return []Flag(fl), nil
 }
 
 func formatInfo(flags []Flag) string {
 	info := "2,"
-	fl := flagList(flags)
+	fl := FlagList(flags)
 	sort.Sort(fl)
 	for _, f := range fl {
 		if []rune(info)[len(info)-1] != rune(f) {
