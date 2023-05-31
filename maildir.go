@@ -20,13 +20,11 @@ import (
 )
 
 // The separator separates a messages unique key from its flags in the filename.
-// This should only be changed on operating systems where the colon isn't
-// allowed in filenames.
 const separator rune = ':'
 
 // readdirChunk represents the number of files to load at once from the mailbox
 // when searching for a message
-var readdirChunk = 100
+var readdirChunk = 4096
 
 var id int64 = 10000
 
@@ -499,6 +497,44 @@ func (d Dir) Clean() error {
 			}
 		}
 	}
+	return nil
+}
+
+// Walk calls fn for every messages in the mailbox's subdir directory.
+//
+// subdir should be "cur", "new" or "tmp".
+//
+// It stops on errors (parsing filename, flags and fn returning an error).
+func (d Dir) Walk(subdir string, fn func(key string, flags []Flag) error) error {
+	f, err := os.Open(filepath.Join(string(d), subdir))
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	for {
+		names, err := f.Readdirnames(readdirChunk)
+		if errors.Is(err, io.EOF) {
+			break
+		} else if err != nil {
+			return err
+		}
+
+		for _, filename := range names {
+			key, err := parseKey(filename)
+			if err != nil {
+				return err
+			}
+			flags, err := d.Flags(key)
+			if err != nil {
+				return err
+			}
+			if err := fn(key, flags); err != nil {
+				return err
+			}
+		}
+	}
+
 	return nil
 }
 
