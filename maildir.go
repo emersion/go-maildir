@@ -504,6 +504,47 @@ func (d Dir) Clean() error {
 	return nil
 }
 
+func (d Dir) getSubDirNames(subdir string) ([]string, error) {
+	f, err := os.Open(filepath.Join(string(d), subdir))
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+
+	names, err := f.Readdirnames(0)
+	if err != nil {
+		return nil, err
+	}
+
+	return names, nil
+}
+
+// Walk calls fn for every messages in the mailbox's cur directory.
+//
+// It stops on errors (parsing filename, flags and fn returning an error).
+func (d Dir) Walk(fn func(key string, flags FlagList) error) error {
+	curs, err := d.getSubDirNames("cur")
+	if err != nil {
+		return err
+	}
+
+	for _, filename := range curs {
+		key, err := parseKey(filename)
+		if err != nil {
+			return err
+		}
+		flags, err := d.Flags(key)
+		if err != nil {
+			return err
+		}
+		if err := fn(key, flags); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 // Delivery represents an ongoing message delivery to the mailbox. It
 // implements the io.WriteCloser interface. On Close the underlying file is
 // moved/relinked to new.
