@@ -350,6 +350,15 @@ func newKey() (string, error) {
 	var key string
 	key += strconv.FormatInt(time.Now().Unix(), 10)
 	key += "."
+	key += strconv.FormatInt(int64(os.Getpid()), 10)
+	key += strconv.FormatInt(atomic.AddInt64(&id, 1), 10)
+	bs := make([]byte, 10)
+	_, err := io.ReadFull(rand.Reader, bs)
+	if err != nil {
+		return "", err
+	}
+	key += hex.EncodeToString(bs)
+	key += "."
 	host, err := os.Hostname()
 	if err != nil {
 		return "", err
@@ -357,16 +366,6 @@ func newKey() (string, error) {
 	host = strings.Replace(host, "/", "\057", -1)
 	host = strings.Replace(host, string(separator), "\072", -1)
 	key += host
-	key += "."
-	key += strconv.FormatInt(int64(os.Getpid()), 10)
-	key += strconv.FormatInt(atomic.AddInt64(&id, 1), 10)
-
-	bs := make([]byte, 10)
-	_, err = io.ReadFull(rand.Reader, bs)
-	if err != nil {
-		return "", err
-	}
-	key += hex.EncodeToString(bs)
 	return key, nil
 }
 
