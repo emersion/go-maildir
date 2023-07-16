@@ -8,14 +8,12 @@ package maildir
 
 import (
 	"crypto/rand"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"sort"
-	"strconv"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -347,25 +345,26 @@ func (d Dir) SetInfo(key, info string) error {
 // counter, the process id and a cryptographical random number to ensure
 // uniqueness among messages delivered in the same second.
 func newKey() (string, error) {
-	var key string
-	key += strconv.FormatInt(time.Now().Unix(), 10)
-	key += "."
-	key += strconv.FormatInt(int64(os.Getpid()), 10)
-	key += strconv.FormatInt(atomic.AddInt64(&id, 1), 10)
-	bs := make([]byte, 10)
-	_, err := io.ReadFull(rand.Reader, bs)
-	if err != nil {
-		return "", err
-	}
-	key += hex.EncodeToString(bs)
-	key += "."
 	host, err := os.Hostname()
 	if err != nil {
 		return "", err
 	}
 	host = strings.Replace(host, "/", "\057", -1)
 	host = strings.Replace(host, string(separator), "\072", -1)
-	key += host
+
+	bs := make([]byte, 10)
+	_, err = io.ReadFull(rand.Reader, bs)
+	if err != nil {
+		return "", err
+	}
+
+	key := fmt.Sprintf("%d.%d%d%x.%s",
+		time.Now().Unix(),
+		os.Getpid(),
+		atomic.AddInt64(&id, 1),
+		bs,
+		host,
+	)
 	return key, nil
 }
 
