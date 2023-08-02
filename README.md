@@ -9,4 +9,4 @@ A Go library for [maildir].
 
 MIT
 
-[maildir]: http://cr.yp.to/proto/maildir.html
+[maildir]: https://cr.yp.to/proto/maildir.html
