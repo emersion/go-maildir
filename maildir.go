@@ -374,21 +374,16 @@ func newKey() (string, error) {
 // in there. If an error occurs while creating one of the subdirectories, this
 // function may leave a partially created directory structure.
 func (d Dir) Init() error {
-	err := os.Mkdir(string(d), 0700)
-	if err != nil && !os.IsExist(err) {
-		return err
+	dirnames := []string{
+		string(d),
+		filepath.Join(string(d), "tmp"),
+		filepath.Join(string(d), "new"),
+		filepath.Join(string(d), "cur"),
 	}
-	err = os.Mkdir(filepath.Join(string(d), "tmp"), 0700)
-	if err != nil && !os.IsExist(err) {
-		return err
-	}
-	err = os.Mkdir(filepath.Join(string(d), "new"), 0700)
-	if err != nil && !os.IsExist(err) {
-		return err
-	}
-	err = os.Mkdir(filepath.Join(string(d), "cur"), 0700)
-	if err != nil && !os.IsExist(err) {
-		return err
+	for _, name := range dirnames {
+		if err := os.Mkdir(name, 0700); err != nil && !os.IsExist(err) {
+			return err
+		}
 	}
 	return nil
 }
