@@ -285,7 +285,7 @@ func (d Dir) Flags(key string) ([]Flag, error) {
 	if err != nil {
 		return nil, err
 	}
-	split := strings.FieldsFunc(filename, func(r rune) bool {
+	split := strings.FieldsFunc(filepath.Base(filename), func(r rune) bool {
 		return r == separator
 	})
 	switch {
