@@ -502,23 +502,30 @@ func (d Dir) Clean() error {
 		return err
 	}
 	defer f.Close()
-	names, err := f.Readdirnames(0)
-	if err != nil {
-		return err
-	}
+
 	now := time.Now()
-	for _, n := range names {
-		fi, err := os.Stat(filepath.Join(string(d), "tmp", n))
-		if err != nil {
-			continue
+	for {
+		names, err := f.Readdirnames(readdirChunk)
+		if errors.Is(err, io.EOF) {
+			break
+		} else if err != nil {
+			return err
 		}
-		if now.Sub(fi.ModTime()).Hours() > 36 {
-			err = os.Remove(filepath.Join(string(d), "tmp", n))
+
+		for _, n := range names {
+			fi, err := os.Stat(filepath.Join(string(d), "tmp", n))
 			if err != nil {
-				return err
+				continue
+			}
+			if now.Sub(fi.ModTime()).Hours() > 36 {
+				err = os.Remove(filepath.Join(string(d), "tmp", n))
+				if err != nil {
+					return err
+				}
 			}
 		}
 	}
+
 	return nil
 }
 
