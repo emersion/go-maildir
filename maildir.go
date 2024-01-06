@@ -243,6 +243,7 @@ func (d Dir) Filename(key string) (string, error) {
 			return guess, nil
 		}
 	}
+
 	file, err := os.Open(filepath.Join(string(d), "cur"))
 	if err != nil {
 		return "", err
@@ -252,12 +253,10 @@ func (d Dir) Filename(key string) (string, error) {
 	// search for a valid candidate (in blocks of readdirChunk)
 	for {
 		names, err := file.Readdirnames(readdirChunk)
-
-		// no match
 		if errors.Is(err, io.EOF) {
+			// no match
 			return "", &KeyError{key, 0}
-		}
-		if err != nil {
+		} else if err != nil {
 			return "", err
 		}
 
