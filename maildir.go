@@ -560,12 +560,8 @@ func (d *Delivery) Close() error {
 	if err != nil {
 		return err
 	}
-	err = os.Link(tmppath, filepath.Join(string(d.d), "new", d.key))
-	if err != nil {
-		return err
-	}
-	err = os.Remove(tmppath)
-	if err != nil {
+	newfile := filepath.Join(string(d.d), "new", d.key)
+	if err = os.Rename(tmppath, newfile); err != nil {
 		return err
 	}
 	return nil
