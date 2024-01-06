@@ -134,16 +134,20 @@ func (d Dir) UnseenCount() (int, error) {
 	return c, nil
 }
 
-func parseKey(basename string) (string, error) {
+// parseBasename splits a basename into its key and info fields.
+func parseBasename(basename string) (key, info string, err error) {
 	split := strings.FieldsFunc(basename, func(r rune) bool {
 		return r == separator
 	})
-
-	if len(split) == 0 {
-		return "", fmt.Errorf("maildir: cannot parse key from filename %q", basename)
+	if len(split) < 2 {
+		return "", "", &MailfileError{basename}
 	}
+	return split[0], split[1], nil
+}
 
-	return split[0], nil
+func parseKey(basename string) (string, error) {
+	key, _, err := parseBasename(basename)
+	return key, err
 }
 
 // Key returns the key for the given file path.
@@ -300,21 +304,21 @@ func (s flagList) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
 func (s flagList) Less(i, j int) bool { return s[i] < s[j] }
 
 func parseFlags(basename string) ([]Flag, error) {
-	split := strings.FieldsFunc(basename, func(r rune) bool {
-		return r == separator
-	})
-	switch {
-	case len(split) <= 1:
-		return nil, &MailfileError{basename}
-	case len(split[1]) < 2,
-		split[1][1] != ',':
-		return nil, &FlagError{split[1], false}
-	case split[1][0] == '1':
-		return nil, &FlagError{split[1], true}
-	case split[1][0] != '2':
-		return nil, &FlagError{split[1], false}
+	_, info, err := parseBasename(basename)
+	if err != nil {
+		return nil, err
 	}
-	fl := flagList(split[1][2:])
+
+	switch {
+	case len(info) < 2, info[1] != ',':
+		return nil, &FlagError{info, false}
+	case info[0] == '1':
+		return nil, &FlagError{info, true}
+	case info[0] != '2':
+		return nil, &FlagError{info, false}
+	}
+
+	fl := flagList(info[2:])
 	sort.Sort(fl)
 	return []Flag(fl), nil
 }
