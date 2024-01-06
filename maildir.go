@@ -139,13 +139,13 @@ func (d Dir) UnseenCount() (int, error) {
 	return c, nil
 }
 
-func parseKey(filename string) (string, error) {
-	split := strings.FieldsFunc(filename, func(r rune) bool {
+func parseKey(basename string) (string, error) {
+	split := strings.FieldsFunc(basename, func(r rune) bool {
 		return r == separator
 	})
 
 	if len(split) == 0 {
-		return "", fmt.Errorf("Cannot parse key from filename %s", filename)
+		return "", fmt.Errorf("Cannot parse key from filename %s", basename)
 	}
 
 	return split[0], nil
