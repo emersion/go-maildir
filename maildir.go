@@ -317,8 +317,8 @@ func parseFlags(basename string) ([]Flag, error) {
 		return nil, &FlagError{info, false}
 	}
 
-	fl := flagList(info[2:])
-	sort.Sort(fl)
+	fl := []Flag(info[2:])
+	sort.Sort(flagList(fl))
 	return []Flag(fl), nil
 }
 
@@ -334,9 +334,8 @@ func (d Dir) Flags(key string) ([]Flag, error) {
 
 func formatInfo(flags []Flag) string {
 	info := "2,"
-	fl := flagList(flags)
-	sort.Sort(fl)
-	for _, f := range fl {
+	sort.Sort(flagList(flags))
+	for _, f := range flags {
 		if []rune(info)[len(info)-1] != rune(f) {
 			info += string(f)
 		}
