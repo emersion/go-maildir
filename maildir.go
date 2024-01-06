@@ -88,17 +88,14 @@ func (d Dir) Unseen() ([]string, error) {
 				continue
 			}
 
+			// Messages in new shouldn't have an info field, but some programs
+			// (e.g. offlineimap) do that anyways. Discard the info field in
+			// that case.
 			split := strings.FieldsFunc(n, func(r rune) bool {
 				return r == separator
 			})
 			key := split[0]
 			info := "2,"
-			// Messages in new shouldn't have an info section but
-			// we act as if, in case some other program didn't
-			// follow the spec.
-			if len(split) > 1 {
-				info = split[1]
-			}
 			keys = append(keys, key)
 
 			err := os.Rename(filepath.Join(string(d), "new", n),
