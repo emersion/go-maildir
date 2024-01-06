@@ -446,24 +446,30 @@ func (d Dir) Copy(target Dir, key string) (string, error) {
 // maildir's tmp directory with a new key, returning the newly generated key or
 // an error.
 func (d Dir) copyToTmp(target Dir, key string) (string, error) {
-	rc, err := d.Open(key)
+	src, err := d.Open(key)
 	if err != nil {
 		return "", err
 	}
-	defer rc.Close()
+	defer src.Close()
+
 	targetKey, err := newKey()
 	if err != nil {
 		return "", err
 	}
 	tmpfile := filepath.Join(string(target), "tmp", targetKey)
-	wc, err := os.OpenFile(tmpfile, os.O_CREATE|os.O_WRONLY|os.O_EXCL, 0666)
+	dst, err := os.OpenFile(tmpfile, os.O_CREATE|os.O_WRONLY|os.O_EXCL, 0666)
 	if err != nil {
 		return "", err
 	}
-	defer wc.Close()
-	if _, err = io.Copy(wc, rc); err != nil {
+	defer dst.Close()
+
+	if _, err = io.Copy(dst, src); err != nil {
 		return "", err
 	}
+	if err := dst.Close(); err != nil {
+		return "", err
+	}
+
 	return targetKey, nil
 }
 
