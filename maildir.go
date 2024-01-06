@@ -158,28 +158,54 @@ func (d Dir) Key(path string) (string, error) {
 	return parseKey(filename)
 }
 
-// Keys returns a slice of valid keys to access messages by.
-func (d Dir) Keys() ([]string, error) {
+// Walk calls fn for every message.
+func (d Dir) Walk(fn func(key string, flags []Flag) error) error {
 	f, err := os.Open(filepath.Join(string(d), "cur"))
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer f.Close()
-	names, err := f.Readdirnames(0)
-	if err != nil {
-		return nil, err
-	}
-	var keys []string
-	for _, n := range names {
-		if n[0] != '.' {
+
+	for {
+		names, err := f.Readdirnames(readdirChunk)
+		if errors.Is(err, io.EOF) {
+			break
+		} else if err != nil {
+			return err
+		}
+
+		for _, n := range names {
+			if n[0] == '.' {
+				continue
+			}
+
 			key, err := parseKey(n)
 			if err != nil {
-				return nil, err
+				return err
 			}
-			keys = append(keys, key)
+
+			flags, err := parseFlags(n)
+			if err != nil {
+				return err
+			}
+
+			if err := fn(key, flags); err != nil {
+				return err
+			}
 		}
 	}
-	return keys, nil
+
+	return nil
+}
+
+// Keys returns a slice of valid keys to access messages by.
+func (d Dir) Keys() ([]string, error) {
+	var keys []string
+	err := d.Walk(func(key string, flags []Flag) error {
+		keys = append(keys, key)
+		return nil
+	})
+	return keys, err
 }
 
 func (d Dir) filenameGuesses(key string) []string {
@@ -275,19 +301,13 @@ func (s flagList) Len() int           { return len(s) }
 func (s flagList) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
 func (s flagList) Less(i, j int) bool { return s[i] < s[j] }
 
-// Flags returns the flags for a message sorted in ascending order.
-// See the documentation of SetFlags for details.
-func (d Dir) Flags(key string) ([]Flag, error) {
-	filename, err := d.Filename(key)
-	if err != nil {
-		return nil, err
-	}
-	split := strings.FieldsFunc(filepath.Base(filename), func(r rune) bool {
+func parseFlags(basename string) ([]Flag, error) {
+	split := strings.FieldsFunc(basename, func(r rune) bool {
 		return r == separator
 	})
 	switch {
 	case len(split) <= 1:
-		return nil, &MailfileError{filename}
+		return nil, &MailfileError{basename}
 	case len(split[1]) < 2,
 		split[1][1] != ',':
 		return nil, &FlagError{split[1], false}
@@ -299,6 +319,16 @@ func (d Dir) Flags(key string) ([]Flag, error) {
 	fl := flagList(split[1][2:])
 	sort.Sort(fl)
 	return []Flag(fl), nil
+}
+
+// Flags returns the flags for a message sorted in ascending order.
+// See the documentation of SetFlags for details.
+func (d Dir) Flags(key string) ([]Flag, error) {
+	filename, err := d.Filename(key)
+	if err != nil {
+		return nil, err
+	}
+	return parseFlags(filepath.Base(filename))
 }
 
 func formatInfo(flags []Flag) string {
