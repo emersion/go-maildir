@@ -21,7 +21,7 @@ import (
 
 // readdirChunk represents the number of files to load at once from the mailbox
 // when searching for a message
-var readdirChunk = 100
+var readdirChunk = 4096
 
 var id int64 = 10000
 
