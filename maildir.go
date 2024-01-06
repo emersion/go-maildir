@@ -32,7 +32,7 @@ type KeyError struct {
 }
 
 func (e *KeyError) Error() string {
-	return fmt.Sprintf("maildir: key %v matches %v files, expected exactly one", e.Key, e.N)
+	return fmt.Sprintf("maildir: key %q matches %v files, expected exactly one", e.Key, e.N)
 }
 
 // A FlagError occurs when a non-standard info section is encountered.
@@ -142,7 +142,7 @@ func parseKey(basename string) (string, error) {
 	})
 
 	if len(split) == 0 {
-		return "", fmt.Errorf("Cannot parse key from filename %s", basename)
+		return "", fmt.Errorf("maildir: cannot parse key from filename %q", basename)
 	}
 
 	return split[0], nil
@@ -151,7 +151,7 @@ func parseKey(basename string) (string, error) {
 // Key returns the key for the given file path.
 func (d Dir) Key(path string) (string, error) {
 	if filepath.Dir(path) != string(d) {
-		return "", fmt.Errorf("Filepath %s belongs to a different Maildir", path)
+		return "", fmt.Errorf("maildir: filepath %q belongs to a different Maildir", path)
 	}
 
 	filename := filepath.Base(path)
