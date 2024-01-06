@@ -325,10 +325,8 @@ func TestIllegal(t *testing.T) {
 	}
 	os.Rename(path, "test_illegal/cur/"+keys[0])
 	_, err = d1.Flags(keys[0])
-	if err != nil {
-		if _, ok := err.(*MailfileError); !ok {
-			t.Fatal(err)
-		}
+	if _, ok := err.(*MailfileError); !ok {
+		t.Fatal(err)
 	}
 }
 
