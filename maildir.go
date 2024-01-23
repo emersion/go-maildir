@@ -262,7 +262,7 @@ func (d Dir) Filename(key string) (string, error) {
 
 		for _, name := range names {
 			if strings.HasPrefix(name, key+string(separator)) {
-				return name, nil
+				return filepath.Join(file.Name(), name), nil
 			}
 		}
 	}
