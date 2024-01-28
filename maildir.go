@@ -82,7 +82,6 @@ func (d Dir) Unseen() ([]string, error) {
 		} else if err != nil {
 			return keys, err
 		}
-
 		for _, n := range names {
 			if n[0] == '.' {
 				continue
@@ -161,6 +160,10 @@ func (d Dir) Key(path string) (string, error) {
 }
 
 // Walk calls fn for every message.
+//
+// If Walk encounters a malformed entry, it accumulates errors and continues
+// iterating. If fn returns an error, Walk stops and returns a new error that
+// contains fn's error in its tree (and can be checked via errors.Is).
 func (d Dir) Walk(fn func(key string, flags []Flag) error) error {
 	f, err := os.Open(filepath.Join(string(d), "cur"))
 	if err != nil {
@@ -168,6 +171,7 @@ func (d Dir) Walk(fn func(key string, flags []Flag) error) error {
 	}
 	defer f.Close()
 
+	var formatErrs []error
 	for {
 		names, err := f.Readdirnames(readdirChunk)
 		if errors.Is(err, io.EOF) {
@@ -183,21 +187,23 @@ func (d Dir) Walk(fn func(key string, flags []Flag) error) error {
 
 			key, err := parseKey(n)
 			if err != nil {
-				return err
+				formatErrs = append(formatErrs, err)
+				continue
 			}
 
 			flags, err := parseFlags(n)
 			if err != nil {
-				return err
+				formatErrs = append(formatErrs, err)
+				continue
 			}
 
 			if err := fn(key, flags); err != nil {
-				return err
+				return errors.Join(append(formatErrs, err)...)
 			}
 		}
 	}
 
-	return nil
+	return errors.Join(formatErrs...)
 }
 
 // Keys returns a slice of valid keys to access messages by.
