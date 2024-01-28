@@ -1,6 +1,7 @@
 package maildir
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -327,8 +328,9 @@ func TestIllegal(t *testing.T) {
 	err = d1.Walk(func(string, []Flag) error {
 		return nil
 	})
-	if _, ok := err.(*MailfileError); !ok {
-		t.Fatal(err)
+	var mailfileErr *MailfileError
+	if !errors.As(err, &mailfileErr) {
+		t.Fatalf("want *MailfileError, but Walk() = %v", err)
 	}
 }
 
