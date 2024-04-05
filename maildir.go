@@ -371,8 +371,8 @@ func newKey() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	host = strings.Replace(host, "/", "\057", -1)
-	host = strings.Replace(host, string(separator), "\072", -1)
+	host = strings.Replace(host, "/", `\057`, -1)
+	host = strings.Replace(host, string(separator), `\072`, -1)
 
 	bs := make([]byte, 10)
 	_, err = io.ReadFull(rand.Reader, bs)
