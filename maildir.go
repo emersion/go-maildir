@@ -57,6 +57,41 @@ func (e *MailfileError) Error() string {
 	return "maildir: invalid mailfile format: " + e.Name
 }
 
+type Flag rune
+
+const (
+	// The user has resent/forwarded/bounced this message to someone else.
+	FlagPassed Flag = 'P'
+	// The user has replied to this message.
+	FlagReplied Flag = 'R'
+	// The user has viewed this message, though perhaps he didn't read all the
+	// way through it.
+	FlagSeen Flag = 'S'
+	// The user has moved this message to the trash; the trash will be emptied
+	// by a later user action.
+	FlagTrashed Flag = 'T'
+	// The user considers this message a draft; toggled at user discretion.
+	FlagDraft Flag = 'D'
+	// User-defined flag; toggled at user discretion.
+	FlagFlagged Flag = 'F'
+)
+
+// parseBasename splits a basename into its key and info fields.
+func parseBasename(basename string) (key, info string, err error) {
+	split := strings.FieldsFunc(basename, func(r rune) bool {
+		return r == separator
+	})
+	if len(split) < 2 {
+		return "", "", &MailfileError{basename}
+	}
+	return split[0], split[1], nil
+}
+
+func parseKey(basename string) (string, error) {
+	key, _, err := parseBasename(basename)
+	return key, err
+}
+
 // A Dir represents a single directory in a Maildir mailbox.
 //
 // Dir is used by programs receiving and reading messages from a Maildir. Only
@@ -131,22 +166,6 @@ func (d Dir) UnseenCount() (int, error) {
 	}
 
 	return c, nil
-}
-
-// parseBasename splits a basename into its key and info fields.
-func parseBasename(basename string) (key, info string, err error) {
-	split := strings.FieldsFunc(basename, func(r rune) bool {
-		return r == separator
-	})
-	if len(split) < 2 {
-		return "", "", &MailfileError{basename}
-	}
-	return split[0], split[1], nil
-}
-
-func parseKey(basename string) (string, error) {
-	key, _, err := parseBasename(basename)
-	return key, err
 }
 
 // Key returns the key for the given file path.
@@ -282,25 +301,6 @@ func (d Dir) Open(key string) (io.ReadCloser, error) {
 	}
 	return os.Open(filename)
 }
-
-type Flag rune
-
-const (
-	// The user has resent/forwarded/bounced this message to someone else.
-	FlagPassed Flag = 'P'
-	// The user has replied to this message.
-	FlagReplied Flag = 'R'
-	// The user has viewed this message, though perhaps he didn't read all the
-	// way through it.
-	FlagSeen Flag = 'S'
-	// The user has moved this message to the trash; the trash will be emptied
-	// by a later user action.
-	FlagTrashed Flag = 'T'
-	// The user considers this message a draft; toggled at user discretion.
-	FlagDraft Flag = 'D'
-	// User-defined flag; toggled at user discretion.
-	FlagFlagged Flag = 'F'
-)
 
 type flagList []Flag
 
