@@ -476,19 +476,35 @@ func (d Dir) copyToTmp(target Dir, key string) (string, error) {
 	return targetKey, nil
 }
 
+type tmpMessage struct {
+	*os.File
+	dest string
+}
+
+func (msg tmpMessage) Close() error {
+	if err := msg.File.Close(); err != nil {
+		return err
+	}
+	return os.Rename(msg.File.Name(), msg.dest)
+}
+
 // Create inserts a new message into the Maildir.
 func (d Dir) Create(flags []Flag) (key string, w io.WriteCloser, err error) {
 	key, err = newKey()
 	if err != nil {
 		return "", nil, err
 	}
-	basename := key + string(separator) + formatInfo(flags)
-	filename := filepath.Join(string(d), "cur", basename)
-	w, err = os.OpenFile(filename, os.O_CREATE|os.O_WRONLY|os.O_EXCL, 0666)
+
+	tmpFilename := filepath.Join(string(d), "tmp", key)
+	f, err := os.OpenFile(tmpFilename, os.O_CREATE|os.O_WRONLY|os.O_EXCL, 0666)
 	if err != nil {
 		return "", nil, err
 	}
-	return key, w, err
+
+	basename := key + string(separator) + formatInfo(flags)
+	curFilename := filepath.Join(string(d), "cur", basename)
+
+	return key, &tmpMessage{File: f, dest: curFilename}, err
 }
 
 // Remove removes the actual file behind this message.
