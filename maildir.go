@@ -433,34 +433,14 @@ func (d Dir) Copy(target Dir, key string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	targetKey, err := d.copyToTmp(target, key)
-	if err != nil {
-		return "", err
-	}
-	tmpfile := filepath.Join(string(target), "tmp", targetKey)
-	curfile := filepath.Join(string(target), "cur", targetKey+string(separator)+formatInfo(flags))
-	if err = os.Rename(tmpfile, curfile); err != nil {
-		return "", err
-	}
-	return targetKey, nil
-}
 
-// copyToTmp copies the message with key from d into a file in the target
-// maildir's tmp directory with a new key, returning the newly generated key or
-// an error.
-func (d Dir) copyToTmp(target Dir, key string) (string, error) {
 	src, err := d.Open(key)
 	if err != nil {
 		return "", err
 	}
 	defer src.Close()
 
-	targetKey, err := newKey()
-	if err != nil {
-		return "", err
-	}
-	tmpfile := filepath.Join(string(target), "tmp", targetKey)
-	dst, err := os.OpenFile(tmpfile, os.O_CREATE|os.O_WRONLY|os.O_EXCL, 0666)
+	targetKey, dst, err := target.Create(flags)
 	if err != nil {
 		return "", err
 	}
