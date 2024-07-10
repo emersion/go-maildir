@@ -57,6 +57,7 @@ func (e *MailfileError) Error() string {
 	return "maildir: invalid mailfile format: " + e.Name
 }
 
+// Flag is a message flag.
 type Flag rune
 
 const (
@@ -87,9 +88,113 @@ func parseBasename(basename string) (key, info string, err error) {
 	return split[0], split[1], nil
 }
 
-func parseKey(basename string) (string, error) {
-	key, _, err := parseBasename(basename)
-	return key, err
+// Message represents a message in a Maildir.
+type Message struct {
+	filename string
+	key      string
+	flags    []Flag
+}
+
+// Filename returns the filesystem path to the message's file.
+//
+// The filename is not stable, it changes depending on the message flags.
+func (msg *Message) Filename() string {
+	return msg.filename
+}
+
+// Key returns the stable, unique identifier for the message.
+func (msg *Message) Key() string {
+	return msg.key
+}
+
+// Flags returns the message flags.
+func (msg *Message) Flags() []Flag {
+	return msg.flags
+}
+
+// SetFlags sets the message flags.
+//
+// Any duplicate flags are dropped, and flags are sorted before being saved.
+func (msg *Message) SetFlags(flags []Flag) error {
+	return msg.setInfo(formatInfo(flags))
+}
+
+// setInfo sets the info section of the filename.
+func (msg *Message) setInfo(info string) error {
+	newBasename := msg.key + string(separator) + info
+	flags, err := parseFlags(newBasename)
+	if err != nil {
+		return err
+	}
+
+	newFilename := filepath.Join(filepath.Dir(msg.filename), newBasename)
+	if err := os.Rename(msg.filename, newFilename); err != nil {
+		return err
+	}
+	msg.filename = newFilename
+	msg.flags = flags
+	return nil
+}
+
+// Open reads the contents of a message.
+func (msg *Message) Open() (io.ReadCloser, error) {
+	return os.Open(msg.filename)
+}
+
+// Remove deletes a message.
+func (msg *Message) Remove() error {
+	return os.Remove(msg.filename)
+}
+
+// MoveTo moves a message from this Maildir to another one.
+//
+// The message flags are preserved, but its key might change.
+func (msg *Message) MoveTo(target Dir) error {
+	newFilename := filepath.Join(string(target), "cur", filepath.Base(msg.filename))
+	if err := os.Rename(msg.filename, newFilename); err != nil {
+		return err
+	}
+	msg.filename = newFilename
+	return nil
+}
+
+// CopyTo copies a message from this Maildir to another one.
+//
+// The copied message is returned. Its flags will be identical but its key
+// might be different.
+func (msg *Message) CopyTo(target Dir) (*Message, error) {
+	src, err := msg.Open()
+	if err != nil {
+		return nil, err
+	}
+	defer src.Close()
+
+	newMsg, dst, err := target.Create(msg.flags)
+	if err != nil {
+		return nil, err
+	}
+	defer dst.Close()
+
+	if _, err = io.Copy(dst, src); err != nil {
+		return nil, err
+	}
+	if err := dst.Close(); err != nil {
+		return nil, err
+	}
+
+	return newMsg, nil
+}
+
+type tmpMessage struct {
+	*os.File
+	dest string
+}
+
+func (msg tmpMessage) Close() error {
+	if err := msg.File.Close(); err != nil {
+		return err
+	}
+	return os.Rename(msg.File.Name(), msg.dest)
 }
 
 // A Dir represents a single directory in a Maildir mailbox.
@@ -99,23 +204,40 @@ func parseKey(basename string) (string, error) {
 // deliver new messages to the Maildir should use Delivery.
 type Dir string
 
-// Unseen moves messages from new to cur and returns their keys.
-// This means the messages are now known to the application. To find out whether
-// a user has seen a message, use Flags().
-func (d Dir) Unseen() ([]string, error) {
+func (d Dir) newMessage(dir, basename string) (*Message, error) {
+	key, _, err := parseBasename(basename)
+	if err != nil {
+		return nil, err
+	}
+
+	flags, err := parseFlags(basename)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Message{
+		filename: filepath.Join(dir, basename),
+		key:      key,
+		flags:    flags,
+	}, nil
+}
+
+// Unseen moves messages from new to cur and returns them.
+// This means the messages are now known to the application.
+func (d Dir) Unseen() ([]*Message, error) {
 	f, err := os.Open(filepath.Join(string(d), "new"))
 	if err != nil {
 		return nil, err
 	}
 	defer f.Close()
 
-	var keys []string
+	var msgs []*Message
 	for {
 		names, err := f.Readdirnames(readdirChunk)
 		if errors.Is(err, io.EOF) {
 			break
 		} else if err != nil {
-			return keys, err
+			return msgs, err
 		}
 		for _, n := range names {
 			if n[0] == '.' {
@@ -127,18 +249,24 @@ func (d Dir) Unseen() ([]string, error) {
 			// that case.
 			key, _, _ := strings.Cut(n, string(separator))
 			info := "2,"
+			newBasename := key + string(separator) + info
 
 			err = os.Rename(filepath.Join(string(d), "new", n),
-				filepath.Join(string(d), "cur", key+string(separator)+info))
+				filepath.Join(string(d), "cur", newBasename))
 			if err != nil {
-				return keys, err
+				return msgs, err
 			}
 
-			keys = append(keys, key)
+			msg, err := d.newMessage(filepath.Join(string(d), "cur"), newBasename)
+			if err != nil {
+				panic(err) // unreachable
+			}
+
+			msgs = append(msgs, msg)
 		}
 	}
 
-	return keys, nil
+	return msgs, nil
 }
 
 // UnseenCount returns the number of messages in new without looking at them.
@@ -168,22 +296,12 @@ func (d Dir) UnseenCount() (int, error) {
 	return c, nil
 }
 
-// Key returns the key for the given file path.
-func (d Dir) Key(path string) (string, error) {
-	if filepath.Dir(path) != string(d) {
-		return "", fmt.Errorf("maildir: filepath %q belongs to a different Maildir", path)
-	}
-
-	filename := filepath.Base(path)
-	return parseKey(filename)
-}
-
 // Walk calls fn for every message.
 //
 // If Walk encounters a malformed entry, it accumulates errors and continues
 // iterating. If fn returns an error, Walk stops and returns a new error that
 // contains fn's error in its tree (and can be checked via errors.Is).
-func (d Dir) Walk(fn func(key string, flags []Flag) error) error {
+func (d Dir) Walk(fn func(*Message) error) error {
 	f, err := os.Open(filepath.Join(string(d), "cur"))
 	if err != nil {
 		return err
@@ -204,19 +322,13 @@ func (d Dir) Walk(fn func(key string, flags []Flag) error) error {
 				continue
 			}
 
-			key, err := parseKey(n)
+			msg, err := d.newMessage(f.Name(), n)
 			if err != nil {
 				formatErrs = append(formatErrs, err)
 				continue
 			}
 
-			flags, err := parseFlags(n)
-			if err != nil {
-				formatErrs = append(formatErrs, err)
-				continue
-			}
-
-			if err := fn(key, flags); err != nil {
+			if err := fn(msg); err != nil {
 				return errors.Join(append(formatErrs, err)...)
 			}
 		}
@@ -225,42 +337,42 @@ func (d Dir) Walk(fn func(key string, flags []Flag) error) error {
 	return errors.Join(formatErrs...)
 }
 
-// Keys returns a slice of valid keys to access messages by.
-func (d Dir) Keys() ([]string, error) {
-	var keys []string
-	err := d.Walk(func(key string, flags []Flag) error {
-		keys = append(keys, key)
+// Messages returns a list of all messages in cur.
+func (d Dir) Messages() ([]*Message, error) {
+	var msgs []*Message
+	err := d.Walk(func(msg *Message) error {
+		msgs = append(msgs, msg)
 		return nil
 	})
-	return keys, err
+	return msgs, err
 }
 
 func (d Dir) filenameGuesses(key string) []string {
-	basename := filepath.Join(string(d), "cur", key+string(separator)+"2,")
+	filename := filepath.Join(string(d), "cur", key+string(separator)+"2,")
 	return []string{
-		basename,
+		filename,
 
-		basename + string(FlagPassed),
-		basename + string(FlagReplied),
-		basename + string(FlagSeen),
-		basename + string(FlagDraft),
-		basename + string(FlagFlagged),
+		filename + string(FlagPassed),
+		filename + string(FlagReplied),
+		filename + string(FlagSeen),
+		filename + string(FlagDraft),
+		filename + string(FlagFlagged),
 
-		basename + string(FlagFlagged) + string(FlagPassed),
-		basename + string(FlagFlagged) + string(FlagPassed) + string(FlagSeen),
-		basename + string(FlagFlagged) + string(FlagReplied),
-		basename + string(FlagFlagged) + string(FlagReplied) + string(FlagSeen),
-		basename + string(FlagFlagged) + string(FlagSeen),
+		filename + string(FlagFlagged) + string(FlagPassed),
+		filename + string(FlagFlagged) + string(FlagPassed) + string(FlagSeen),
+		filename + string(FlagFlagged) + string(FlagReplied),
+		filename + string(FlagFlagged) + string(FlagReplied) + string(FlagSeen),
+		filename + string(FlagFlagged) + string(FlagSeen),
 
-		basename + string(FlagPassed),
-		basename + string(FlagPassed) + string(FlagSeen),
+		filename + string(FlagPassed),
+		filename + string(FlagPassed) + string(FlagSeen),
 
-		basename + string(FlagReplied) + string(FlagSeen),
+		filename + string(FlagReplied) + string(FlagSeen),
 	}
 }
 
-// Filename returns the path to the file corresponding to the key.
-func (d Dir) Filename(key string) (string, error) {
+// filenameByKey returns the path to the file corresponding to the key.
+func (d Dir) filenameByKey(key string) (string, error) {
 	// before doing an expensive Glob, see if we can guess the path based on some
 	// common flags
 	for _, guess := range d.filenameGuesses(key) {
@@ -293,13 +405,14 @@ func (d Dir) Filename(key string) (string, error) {
 	}
 }
 
-// Open reads a message by key.
-func (d Dir) Open(key string) (io.ReadCloser, error) {
-	filename, err := d.Filename(key)
+// MessageByKey finds a message by key.
+func (d Dir) MessageByKey(key string) (*Message, error) {
+	filename, err := d.filenameByKey(key)
 	if err != nil {
 		return nil, err
 	}
-	return os.Open(filename)
+	dir, basename := filepath.Split(filename)
+	return d.newMessage(dir, basename)
 }
 
 type flagList []Flag
@@ -328,16 +441,6 @@ func parseFlags(basename string) ([]Flag, error) {
 	return []Flag(fl), nil
 }
 
-// Flags returns the flags for a message sorted in ascending order.
-// See the documentation of SetFlags for details.
-func (d Dir) Flags(key string) ([]Flag, error) {
-	filename, err := d.Filename(key)
-	if err != nil {
-		return nil, err
-	}
-	return parseFlags(filepath.Base(filename))
-}
-
 func formatInfo(flags []Flag) string {
 	info := "2,"
 	sort.Sort(flagList(flags))
@@ -347,25 +450,6 @@ func formatInfo(flags []Flag) string {
 		}
 	}
 	return info
-}
-
-// SetFlags appends an info section to the filename according to the given flags.
-// This function removes duplicates and sorts the flags, but doesn't check
-// whether they conform with the Maildir specification.
-func (d Dir) SetFlags(key string, flags []Flag) error {
-	return d.SetInfo(key, formatInfo(flags))
-}
-
-// Set the info part of the filename.
-// Only use this if you plan on using a non-standard info part.
-func (d Dir) SetInfo(key, info string) error {
-	filename, err := d.Filename(key)
-	if err != nil {
-		return err
-	}
-	err = os.Rename(filename, filepath.Join(string(d), "cur", key+
-		string(separator)+info))
-	return err
 }
 
 // newKey generates a new unique key as described in the Maildir specification.
@@ -416,84 +500,30 @@ func (d Dir) Init() error {
 	return nil
 }
 
-// Move moves a message from this Maildir to another.
-func (d Dir) Move(target Dir, key string) error {
-	path, err := d.Filename(key)
-	if err != nil {
-		return err
-	}
-	return os.Rename(path, filepath.Join(string(target), "cur", filepath.Base(path)))
-}
-
-// Copy copies the message with key from this Maildir to the target, preserving
-// its flags, returning the newly generated key for the target maildir or an
-// error.
-func (d Dir) Copy(target Dir, key string) (string, error) {
-	flags, err := d.Flags(key)
-	if err != nil {
-		return "", err
-	}
-
-	src, err := d.Open(key)
-	if err != nil {
-		return "", err
-	}
-	defer src.Close()
-
-	targetKey, dst, err := target.Create(flags)
-	if err != nil {
-		return "", err
-	}
-	defer dst.Close()
-
-	if _, err = io.Copy(dst, src); err != nil {
-		return "", err
-	}
-	if err := dst.Close(); err != nil {
-		return "", err
-	}
-
-	return targetKey, nil
-}
-
-type tmpMessage struct {
-	*os.File
-	dest string
-}
-
-func (msg tmpMessage) Close() error {
-	if err := msg.File.Close(); err != nil {
-		return err
-	}
-	return os.Rename(msg.File.Name(), msg.dest)
-}
-
 // Create inserts a new message into the Maildir.
-func (d Dir) Create(flags []Flag) (key string, w io.WriteCloser, err error) {
-	key, err = newKey()
+func (d Dir) Create(flags []Flag) (*Message, io.WriteCloser, error) {
+	key, err := newKey()
 	if err != nil {
-		return "", nil, err
+		return nil, nil, err
 	}
 
 	tmpFilename := filepath.Join(string(d), "tmp", key)
 	f, err := os.OpenFile(tmpFilename, os.O_CREATE|os.O_WRONLY|os.O_EXCL, 0666)
 	if err != nil {
-		return "", nil, err
+		return nil, nil, err
 	}
 
 	basename := key + string(separator) + formatInfo(flags)
 	curFilename := filepath.Join(string(d), "cur", basename)
 
-	return key, &tmpMessage{File: f, dest: curFilename}, err
-}
+	flagsCopy := make([]Flag, len(flags))
+	copy(flagsCopy, flags)
 
-// Remove removes the actual file behind this message.
-func (d Dir) Remove(key string) error {
-	f, err := d.Filename(key)
-	if err != nil {
-		return err
-	}
-	return os.Remove(f)
+	return &Message{
+		filename: curFilename,
+		key:      key,
+		flags:    flagsCopy,
+	}, &tmpMessage{File: f, dest: curFilename}, err
 }
 
 // Clean removes old files from tmp and should be run periodically.

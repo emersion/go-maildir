@@ -119,14 +119,11 @@ func TestDelivery(t *testing.T) {
 	var msg = "this is a message"
 	makeDelivery(t, d, msg)
 
-	keys, err := d.Unseen()
+	msgs, err := d.Unseen()
 	if err != nil {
 		t.Fatal(err)
 	}
-	path, err := d.Filename(keys[0])
-	if err != nil {
-		t.Fatal(err)
-	}
+	path := msgs[0].Filename()
 	if !exists(path) {
 		t.Fatal("File doesn't exist")
 	}
@@ -146,35 +143,34 @@ func TestDir_Create(t *testing.T) {
 	}
 	defer cleanup(t, d)
 
-	var msg = "this is a message"
-	key, w, err := d.Create([]Flag{FlagFlagged})
+	var text = "this is a message"
+	msg, w, err := d.Create([]Flag{FlagFlagged})
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer w.Close()
-	if _, err := io.WriteString(w, msg); err != nil {
+	if _, err := io.WriteString(w, text); err != nil {
 		t.Fatal(err)
 	}
 	if err := w.Close(); err != nil {
 		t.Fatal(err)
 	}
 
-	flags, err := d.Flags(key)
+	msg, err = d.MessageByKey(msg.Key())
 	if err != nil {
 		t.Fatal(err)
-	} else if len(flags) != 1 || flags[0] != FlagFlagged {
+	}
+
+	flags := msg.Flags()
+	if len(flags) != 1 || flags[0] != FlagFlagged {
 		t.Errorf("Dir.Flags() = %v, want {FlagFlagged}", flags)
 	}
 
-	path, err := d.Filename(key)
-	if err != nil {
-		t.Fatal(err)
-	}
+	path := msg.Filename()
 	if !exists(path) {
 		t.Fatal("File doesn't exist")
 	}
-
-	if cat(t, path) != msg {
+	if cat(t, path) != text {
 		t.Fatal("Content doesn't match")
 	}
 }
@@ -191,16 +187,12 @@ func TestPurge(t *testing.T) {
 
 	makeDelivery(t, d, "foo")
 
-	keys, err := d.Unseen()
+	msgs, err := d.Unseen()
 	if err != nil {
 		t.Fatal(err)
 	}
-	path, err := d.Filename(keys[0])
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = d.Remove(keys[0])
-	if err != nil {
+	path := msgs[0].Filename()
+	if err := msgs[0].Remove(); err != nil {
 		t.Fatal(err)
 	}
 
@@ -227,27 +219,23 @@ func TestMove(t *testing.T) {
 
 	const msg = "a moving message"
 	makeDelivery(t, d1, msg)
-	keys, err := d1.Unseen()
+	msgs, err := d1.Unseen()
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = d1.Move(d2, keys[0])
+	err = msgs[0].MoveTo(d2)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	keys, err = d2.Keys()
+	msgs, err = d2.Messages()
 	if err != nil {
 		t.Fatal(err)
 	}
-	path, err := d2.Filename(keys[0])
-	if err != nil {
-		t.Fatal(err)
-	}
+	path := msgs[0].Filename()
 	if cat(t, path) != msg {
 		t.Fatal("Content doesn't match")
 	}
-
 }
 
 func TestCopy(t *testing.T) {
@@ -266,32 +254,26 @@ func TestCopy(t *testing.T) {
 	defer cleanup(t, d2)
 	const msg = "a moving message"
 	makeDelivery(t, d1, msg)
-	keys, err := d1.Unseen()
+	msgs, err := d1.Unseen()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err = d1.SetFlags(keys[0], []Flag{FlagSeen}); err != nil {
+	if err = msgs[0].SetFlags([]Flag{FlagSeen}); err != nil {
 		t.Fatal(err)
 	}
-	key2, err := d1.Copy(d2, keys[0])
+	msgCopy, err := msgs[0].CopyTo(d2)
 	if err != nil {
 		t.Fatal(err)
 	}
-	path, err := d1.Filename(keys[0])
-	if err != nil {
-		t.Fatal(err)
-	}
+	path := msgs[0].Filename()
 	if cat(t, path) != msg {
 		t.Error("original content has changed")
 	}
-	path, err = d2.Filename(key2)
-	if err != nil {
-		t.Fatal(err)
-	}
+	path = msgCopy.Filename()
 	if cat(t, path) != msg {
 		t.Error("target content doesn't match source")
 	}
-	flags, err := d2.Flags(key2)
+	flags := msgCopy.Flags()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -313,19 +295,18 @@ func TestIllegal(t *testing.T) {
 	defer cleanup(t, d1)
 	const msg = "an illegal message"
 	makeDelivery(t, d1, msg)
-	keys, err := d1.Unseen()
+	msgs, err := d1.Unseen()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err = d1.SetFlags(keys[0], []Flag{FlagSeen}); err != nil {
+	if err := msgs[0].SetFlags([]Flag{FlagSeen}); err != nil {
 		t.Fatal(err)
 	}
-	path, err := d1.Filename(keys[0])
-	if err != nil {
+	path := msgs[0].Filename()
+	if err := os.Rename(path, "test_illegal/cur/"+msgs[0].Key()); err != nil {
 		t.Fatal(err)
 	}
-	os.Rename(path, "test_illegal/cur/"+keys[0])
-	err = d1.Walk(func(string, []Flag) error {
+	err = d1.Walk(func(*Message) error {
 		return nil
 	})
 	var mailfileErr *MailfileError
@@ -345,7 +326,7 @@ func TestFolderWithSquareBrackets(t *testing.T) {
 	}
 
 	key := func() string {
-		key, writer, err := dir.Create([]Flag{FlagPassed, FlagReplied})
+		msg, writer, err := dir.Create([]Flag{FlagPassed, FlagReplied})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -354,15 +335,12 @@ func TestFolderWithSquareBrackets(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		return key
+		return msg.Key()
 	}()
 
-	filename, err := dir.Filename(key)
+	_, err := dir.MessageByKey(key)
 	if err != nil {
 		t.Fatal(err)
-	}
-	if filename == "" {
-		t.Error("filename should not be empty")
 	}
 }
 
@@ -404,15 +382,15 @@ func TestDifferentSizesOfReaddirChunks(t *testing.T) {
 		makeDelivery(t, dir, fmt.Sprintf("here is message number %d", i))
 	}
 
-	// grab keys
-	keys, err := dir.Unseen()
+	// grab unseen messages
+	msgs, err := dir.Unseen()
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// avoid the filename guesser
-	for _, key := range keys {
-		err := dir.SetFlags(key, []Flag{FlagPassed, FlagReplied})
+	for _, msg := range msgs {
+		err := msg.SetFlags([]Flag{FlagPassed, FlagReplied})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -427,13 +405,13 @@ func TestDifferentSizesOfReaddirChunks(t *testing.T) {
 	// try different sizes of chunks
 	for chunkSize := 0; chunkSize <= totalFiles+1; chunkSize++ {
 		readdirChunk = chunkSize
-		for _, key := range keys {
-			filename, err := dir.Filename(key)
+		for _, msg := range msgs {
+			found, err := dir.MessageByKey(msg.Key())
 			if err != nil {
 				t.Fatal(err)
 			}
-			if filename == "" {
-				t.Errorf("cannot find filename for key %q", key)
+			if found.Key() != msg.Key() {
+				t.Errorf("cannot find filename for key %q", msg.Key())
 			}
 		}
 	}
@@ -452,32 +430,32 @@ func BenchmarkFilename(b *testing.B) {
 		makeDelivery(b, d, fmt.Sprintf("here is message number %d", i))
 	}
 
-	// grab keys
-	keys, err := d.Unseen()
+	// grab unseen messages
+	msgs, err := d.Unseen()
 	if err != nil {
 		b.Fatal(err)
 	}
 
 	// shuffle keys
-	rand.Shuffle(len(keys), func(i, j int) {
-		keys[i], keys[j] = keys[j], keys[i]
+	rand.Shuffle(len(msgs), func(i, j int) {
+		msgs[i], msgs[j] = msgs[j], msgs[i]
 	})
 
 	// set some flags
-	for i, key := range keys {
+	for i, msg := range msgs {
 		var err error
 		switch i % 5 {
 		case 0:
 			// no flags
 			fallthrough
 		case 1:
-			err = d.SetFlags(key, []Flag{FlagSeen})
+			err = msg.SetFlags([]Flag{FlagSeen})
 		case 2:
-			err = d.SetFlags(key, []Flag{FlagSeen, FlagReplied})
+			err = msg.SetFlags([]Flag{FlagSeen, FlagReplied})
 		case 3:
-			err = d.SetFlags(key, []Flag{FlagReplied})
+			err = msg.SetFlags([]Flag{FlagReplied})
 		case 4:
-			err = d.SetFlags(key, []Flag{FlagFlagged})
+			err = msg.SetFlags([]Flag{FlagFlagged})
 		}
 		if err != nil {
 			b.Fatal(err)
@@ -485,18 +463,18 @@ func BenchmarkFilename(b *testing.B) {
 	}
 
 	// run benchmark for the first N shuffled keys
-	keyIdx := 0
+	msgIdx := 0
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		b.StartTimer()
-		_, err := d.Filename(keys[keyIdx])
+		_, err := d.MessageByKey(msgs[msgIdx].Key())
 		b.StopTimer()
 		if err != nil {
-			b.Errorf("could not get filename for key %s", keys[keyIdx])
+			b.Errorf("could not get filename for key %s", msgs[msgIdx].Key())
 		}
-		keyIdx++
-		if keyIdx >= len(keys) {
-			keyIdx = 0
+		msgIdx++
+		if msgIdx >= len(msgs) {
+			msgIdx = 0
 		}
 	}
 }
