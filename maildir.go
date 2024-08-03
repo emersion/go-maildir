@@ -101,13 +101,7 @@ func parseBasename(basename string) (key string, flags []Flag, err error) {
 	return key, flags, nil
 }
 
-type flagList []Flag
-
-func (s flagList) Len() int           { return len(s) }
-func (s flagList) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
-func (s flagList) Less(i, j int) bool { return s[i] < s[j] }
-
-func formatInfo(flags []Flag) string {
+func formatBasename(key string, flags []Flag) string {
 	info := "2,"
 	sort.Sort(flagList(flags))
 	for _, f := range flags {
@@ -115,8 +109,14 @@ func formatInfo(flags []Flag) string {
 			info += string(f)
 		}
 	}
-	return info
+	return key + string(separator) + info
 }
+
+type flagList []Flag
+
+func (s flagList) Len() int           { return len(s) }
+func (s flagList) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
+func (s flagList) Less(i, j int) bool { return s[i] < s[j] }
 
 // Message represents a message in a Maildir.
 type Message struct {
@@ -146,12 +146,7 @@ func (msg *Message) Flags() []Flag {
 //
 // Any duplicate flags are dropped, and flags are sorted before being saved.
 func (msg *Message) SetFlags(flags []Flag) error {
-	return msg.setInfo(formatInfo(flags))
-}
-
-// setInfo sets the info section of the filename.
-func (msg *Message) setInfo(info string) error {
-	newBasename := msg.key + string(separator) + info
+	newBasename := formatBasename(msg.key, flags)
 	_, flags, err := parseBasename(newBasename)
 	if err != nil {
 		return err
@@ -501,7 +496,7 @@ func (d Dir) Create(flags []Flag) (*Message, io.WriteCloser, error) {
 		return nil, nil, err
 	}
 
-	basename := key + string(separator) + formatInfo(flags)
+	basename := formatBasename(key, flags)
 	curFilename := filepath.Join(string(d), "cur", basename)
 
 	flagsCopy := make([]Flag, len(flags))
