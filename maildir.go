@@ -77,15 +77,45 @@ const (
 	FlagFlagged Flag = 'F'
 )
 
-// parseBasename splits a basename into its key and info fields.
-func parseBasename(basename string) (key, info string, err error) {
+func parseBasename(basename string) (key string, flags []Flag, err error) {
 	split := strings.FieldsFunc(basename, func(r rune) bool {
 		return r == separator
 	})
 	if len(split) < 2 {
-		return "", "", &MailfileError{basename}
+		return "", nil, &MailfileError{basename}
 	}
-	return split[0], split[1], nil
+	key, info := split[0], split[1]
+
+	switch {
+	case len(info) < 2, info[1] != ',':
+		return "", nil, &FlagError{info, false}
+	case info[0] == '1':
+		return "", nil, &FlagError{info, true}
+	case info[0] != '2':
+		return "", nil, &FlagError{info, false}
+	}
+
+	flags = []Flag(info[2:])
+	sort.Sort(flagList(flags))
+
+	return key, flags, nil
+}
+
+type flagList []Flag
+
+func (s flagList) Len() int           { return len(s) }
+func (s flagList) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
+func (s flagList) Less(i, j int) bool { return s[i] < s[j] }
+
+func formatInfo(flags []Flag) string {
+	info := "2,"
+	sort.Sort(flagList(flags))
+	for _, f := range flags {
+		if []rune(info)[len(info)-1] != rune(f) {
+			info += string(f)
+		}
+	}
+	return info
 }
 
 // Message represents a message in a Maildir.
@@ -122,7 +152,7 @@ func (msg *Message) SetFlags(flags []Flag) error {
 // setInfo sets the info section of the filename.
 func (msg *Message) setInfo(info string) error {
 	newBasename := msg.key + string(separator) + info
-	flags, err := parseFlags(newBasename)
+	_, flags, err := parseBasename(newBasename)
 	if err != nil {
 		return err
 	}
@@ -205,12 +235,7 @@ func (msg tmpMessage) Close() error {
 type Dir string
 
 func (d Dir) newMessage(dir, basename string) (*Message, error) {
-	key, _, err := parseBasename(basename)
-	if err != nil {
-		return nil, err
-	}
-
-	flags, err := parseFlags(basename)
+	key, flags, err := parseBasename(basename)
 	if err != nil {
 		return nil, err
 	}
@@ -413,43 +438,6 @@ func (d Dir) MessageByKey(key string) (*Message, error) {
 	}
 	dir, basename := filepath.Split(filename)
 	return d.newMessage(dir, basename)
-}
-
-type flagList []Flag
-
-func (s flagList) Len() int           { return len(s) }
-func (s flagList) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
-func (s flagList) Less(i, j int) bool { return s[i] < s[j] }
-
-func parseFlags(basename string) ([]Flag, error) {
-	_, info, err := parseBasename(basename)
-	if err != nil {
-		return nil, err
-	}
-
-	switch {
-	case len(info) < 2, info[1] != ',':
-		return nil, &FlagError{info, false}
-	case info[0] == '1':
-		return nil, &FlagError{info, true}
-	case info[0] != '2':
-		return nil, &FlagError{info, false}
-	}
-
-	fl := []Flag(info[2:])
-	sort.Sort(flagList(fl))
-	return []Flag(fl), nil
-}
-
-func formatInfo(flags []Flag) string {
-	info := "2,"
-	sort.Sort(flagList(flags))
-	for _, f := range flags {
-		if []rune(info)[len(info)-1] != rune(f) {
-			info += string(f)
-		}
-	}
-	return info
 }
 
 // newKey generates a new unique key as described in the Maildir specification.
