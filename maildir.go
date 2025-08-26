@@ -476,7 +476,7 @@ func (d Dir) Init() error {
 		filepath.Join(string(d), "cur"),
 	}
 	for _, name := range dirnames {
-		if err := os.Mkdir(name, 0700); err != nil && !os.IsExist(err) {
+		if err := os.MkdirAll(name, 0700); err != nil && !os.IsExist(err) {
 			return err
 		}
 	}
